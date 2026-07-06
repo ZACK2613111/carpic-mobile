@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>CarStudio</title>
+    <style>
+      :root {
+        --bg: #0a0a0f; --surface: #15151f; --surfaceAlt: #1c1c28; --border: #2e2e3c;
+        --text: #f6f7fb; --muted: #a2a3b2; --primary: #4b7bff;
+      }
+      * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+      html, body { margin: 0; background: var(--bg); color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+      .wrap { max-width: 780px; margin: 0 auto; padding: 16px; }
+      .title { font-size: 24px; font-weight: 800; margin: 8px 4px 16px; }
+      .loading, .err { text-align: center; color: var(--muted); padding: 64px 16px; }
+      .section-label { color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .5px;
+        text-transform: uppercase; margin: 22px 4px 10px; }
+
+      /* stage (360 + lightbox share this) */
+      .stage { position: relative; width: 100%; aspect-ratio: 4/3; border-radius: 16px; overflow: hidden;
+        border: 1px solid var(--border); background: var(--surfaceAlt); touch-action: pan-y; user-select: none; }
+      .stage img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+      .stage .bg { position: absolute; inset: 0; }
+      .hint { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%);
+        background: rgba(0,0,0,.5); color: #fff; font-size: 12px; padding: 5px 12px; border-radius: 999px; }
+      .badge360 { position: absolute; top: 10px; left: 10px; background: var(--primary); color: #fff;
+        font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
+
+      /* hotspot pins */
+      .pin { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%;
+        border: 2px solid #fff; display: flex; align-items: center; justify-content: center;
+        color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,.4); }
+      .pop { position: absolute; z-index: 5; max-width: 220px; background: var(--surface); border: 1px solid var(--border);
+        border-radius: 12px; padding: 10px 12px; transform: translate(-50%, calc(-100% - 16px)); box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+      .pop h4 { margin: 0 0 4px; font-size: 14px; }
+      .pop p { margin: 0; font-size: 13px; color: var(--muted); }
+      .pop .sev { font-size: 11px; font-weight: 700; }
+
+      /* gallery */
+      .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+      .card { cursor: pointer; }
+      .card .thumb { width: 100%; aspect-ratio: 1; border-radius: 12px; overflow: hidden; border: 1px solid var(--border);
+        background: var(--surfaceAlt); display: flex; align-items: center; justify-content: center; position: relative; }
+      .card .thumb img { width: 100%; height: 100%; object-fit: cover; }
+      .card .cap { font-size: 12px; color: var(--muted); margin-top: 5px; text-align: center;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .dotcount { position: absolute; top: 6px; right: 6px; background: var(--primary); color: #fff;
+        font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; }
+
+      /* lightbox */
+      .lb { position: fixed; inset: 0; background: rgba(0,0,0,.85); display: none; flex-direction: column;
+        z-index: 20; padding: 16px; }
+      .lb.open { display: flex; }
+      .lb .close { align-self: flex-end; background: var(--surface); border: 1px solid var(--border); color: #fff;
+        width: 40px; height: 40px; border-radius: 12px; font-size: 20px; cursor: pointer; }
+      .lb .stage { flex: 1; margin: 12px 0; aspect-ratio: auto; }
+      .lb .lbtitle { color: #fff; font-weight: 700; }
+      audio { width: 100%; margin-top: 12px; }
+      .footer { text-align: center; color: var(--muted); font-size: 11px; padding: 28px 0 12px; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap"><div id="app"><div class="loading">Loading…</div></div></div>
+    <div class="lb" id="lb"><button class="close" id="lbClose">×</button></div>
+
+    <script>
+      var BG = {
+        transparent: 'repeating-conic-gradient(#c9c9d1 0 25%, #9a9aa5 0 50%) 0 0 / 28px 28px',
+        white: '#ffffff', silver: '#d7dbe0', black: '#0b0b0f',
+        'grad-ocean': 'linear-gradient(#1e3c72,#2a5298)',
+        'grad-sunset': 'linear-gradient(#f7971e,#ffd200)',
+        'grad-graphite': 'linear-gradient(#232526,#414345)',
+        'studio-graphite': 'linear-gradient(#3a3f47,#0f1114)',
+        'studio-showroom': 'linear-gradient(#e9edf2,#c3ccd6)',
+        'studio-blue': 'linear-gradient(#1b2a4a,#0a1122)'
+      };
+      function bgFor(id) { return BG[id] || 'var(--surfaceAlt)'; }
+      function pinColor(h) {
+        if (h.kind === 'marketing') return '#4b7bff';
+        return h.severity === 'high' ? '#ff5a5a' : h.severity === 'low' ? '#ffd23a' : '#ffa83a';
+      }
+      // Uses textContent (never innerHTML) so manifest strings can't inject markup/scripts.
+      function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+      // Renders hotspot pins into a stage element for a given set of hotspots.
+      function renderPins(stage, hotspots) {
+        (hotspots || []).forEach(function (h, i) {
+          var pin = el('div', 'pin');
+          pin.style.left = (h.x * 100) + '%';
+          pin.style.top = (h.y * 100) + '%';
+          pin.style.background = pinColor(h);
+          pin.textContent = String(i + 1);
+          pin.onclick = function (ev) {
+            ev.stopPropagation();
+            var existing = stage.querySelector('.pop');
+            if (existing) existing.remove();
+            var pop = el('div', 'pop');
+            pop.style.left = (h.x * 100) + '%';
+            pop.style.top = (h.y * 100) + '%';
+            if (h.kind === 'inspection' && h.severity) {
+              var sevEl = el('div', 'sev', String(h.severity).toUpperCase());
+              sevEl.style.color = pinColor(h);
+              pop.appendChild(sevEl);
+            }
+            pop.appendChild(el('h4', null, h.title || ''));
+            if (h.description) pop.appendChild(el('p', null, h.description));
+            stage.appendChild(pop);
+          };
+          stage.appendChild(pin);
+        });
+        stage.onclick = function () { var p = stage.querySelector('.pop'); if (p) p.remove(); };
+      }
+
+      // Drag-to-rotate 360 stage.
+      function build360(spin) {
+        var stage = el('div', 'stage');
+        var bg = el('div', 'bg');
+        bg.style.background = spin.hasCutout ? bgFor(spin.backgroundId) : 'transparent';
+        stage.appendChild(bg);
+        var img = el('img');
+        stage.appendChild(img);
+        stage.appendChild(el('div', 'badge360', '360°'));
+        var hintEl = el('div', 'hint', '↔ Drag to rotate');
+        stage.appendChild(hintEl);
+
+        var n = spin.frames.length, index = 0, startX = 0, startIndex = 0, dragging = false;
+        function show(i) {
+          index = ((i % n) + n) % n;
+          if (spin.frames[index]) img.src = spin.frames[index];
+          Array.prototype.slice.call(stage.querySelectorAll('.pin,.pop')).forEach(function (p) { p.remove(); });
+          renderPins(stage, (spin.hotspots || []).filter(function (h) { return h.frame === index; }));
+          hintEl.textContent = '↔ ' + (index + 1) + ' / ' + n;
+        }
+        // preload
+        spin.frames.forEach(function (u) { if (u) { var im = new Image(); im.src = u; } });
+        function onDown(x) { dragging = true; startX = x; startIndex = index; }
+        function onMove(x) { if (!dragging) return; var step = stage.clientWidth / n; show(startIndex - Math.round((x - startX) / step)); }
+        function onUp() { dragging = false; }
+        stage.addEventListener('mousedown', function (e) { onDown(e.clientX); });
+        window.addEventListener('mousemove', function (e) { onMove(e.clientX); });
+        window.addEventListener('mouseup', onUp);
+        stage.addEventListener('touchstart', function (e) { onDown(e.touches[0].clientX); }, { passive: true });
+        stage.addEventListener('touchmove', function (e) { onMove(e.touches[0].clientX); }, { passive: true });
+        stage.addEventListener('touchend', onUp);
+        show(0);
+        return stage;
+      }
+
+      function openLightbox(shot) {
+        var lb = document.getElementById('lb');
+        Array.prototype.slice.call(lb.querySelectorAll('.stage,.lbtitle,audio')).forEach(function (n) { n.remove(); });
+        lb.appendChild(el('div', 'lbtitle', shot.label || ''));
+        var stage = el('div', 'stage');
+        var bg = el('div', 'bg');
+        bg.style.background = shot.cutout ? bgFor(shot.backgroundId) : 'transparent';
+        stage.appendChild(bg);
+        var img = el('img'); img.src = shot.url; stage.appendChild(img);
+        renderPins(stage, shot.hotspots);
+        lb.appendChild(stage);
+        if (shot.audioUrl) {
+          var a = document.createElement('audio'); a.controls = true; a.src = shot.audioUrl; lb.appendChild(a);
+        }
+        lb.classList.add('open');
+      }
+      document.getElementById('lbClose').onclick = function () { document.getElementById('lb').classList.remove('open'); };
+
+      function render(m) {
+        var app = document.getElementById('app');
+        app.innerHTML = '';
+        app.appendChild(el('div', 'title', m.name || 'Vehicle'));
+
+        if (m.spin && m.spin.frameCount > 0 && m.spin.frames && m.spin.frames.length) {
+          app.appendChild(build360(m.spin));
+        }
+
+        // group shots by section
+        var groups = {};
+        (m.shots || []).forEach(function (s) { (groups[s.section] = groups[s.section] || []).push(s); });
+        var order = ['exterior', 'wheels', 'interior', 'docs', 'engine'];
+        var labels = { exterior: 'Exterior', wheels: 'Wheels', interior: 'Interior', docs: 'Documents', engine: 'Engine' };
+        order.forEach(function (g) {
+          var list = groups[g]; if (!list || !list.length) return;
+          app.appendChild(el('div', 'section-label', labels[g] || g));
+          var grid = el('div', 'grid');
+          list.forEach(function (s) {
+            var card = el('div', 'card');
+            var thumb = el('div', 'thumb');
+            var im = el('img'); im.src = s.url; im.loading = 'lazy'; thumb.appendChild(im);
+            var count = (s.hotspots || []).length;
+            if (count) thumb.appendChild(el('div', 'dotcount', String(count)));
+            card.appendChild(thumb);
+            card.appendChild(el('div', 'cap', s.label || ''));
+            card.onclick = function () { openLightbox(s); };
+            grid.appendChild(card);
+          });
+          app.appendChild(grid);
+        });
+
+        app.appendChild(el('div', 'footer', 'Made with CarStudio'));
+      }
+
+      (function () {
+        var app = document.getElementById('app');
+        var d = new URLSearchParams(location.search).get('d');
+        if (!d) { app.innerHTML = '<p class="err">Missing listing data.</p>'; return; }
+        fetch(d)
+          .then(function (r) { return r.json(); })
+          .then(function (m) {
+            if (!m || typeof m !== 'object') throw new Error('bad manifest');
+            render(m);
+          })
+          .catch(function () { app.innerHTML = '<p class="err">Could not load this listing.</p>'; });
+      })();
+    </script>
+  </body>
+</html>
