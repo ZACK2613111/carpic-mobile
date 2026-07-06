@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "car-studio",
+    "name": "CarStudio",
     "slug": "car-studio",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,11 +8,17 @@
     "scheme": "carstudio",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.autodeclic.carstudio",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSPhotoLibraryAddUsageDescription": "CarStudio saves your finished car photos to your library."
+      }
     },
     "android": {
+      "package": "com.autodeclic.carstudio",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0B0B0F",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -28,11 +34,50 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#0B0B0F",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
-      ]
+      ],
+      "expo-sharing",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "17.0"
+          }
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "CarStudio needs access to your photos so you can pick a car photo to edit.",
+          "cameraPermission": "CarStudio needs the camera so you can shoot a car photo to edit."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "CarStudio needs access to save and read edited car photos.",
+          "savePhotosPermission": "CarStudio needs permission to save your finished car photos.",
+          "isAccessMediaLocationEnabled": false
+        }
+      ],
+      "./plugins/withMlKitSubjectSegmentation",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "CarStudio uses the camera for the guided car photos and 360° capture.",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "CarStudio records the engine sound for your car listing."
+        }
+      ],
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true,
