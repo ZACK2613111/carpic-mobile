@@ -1,0 +1,51 @@
+import { Redirect, Tabs } from 'expo-router';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
+
+import { Icon } from '@/components/Icon';
+import { isSupabaseConfigured } from '@/lib/env';
+import { useAuth } from '@/providers/AuthProvider';
+import { colors } from '@/theme';
+
+export default function TabsLayout() {
+  const { session, loading } = useAuth();
+
+  if (isSupabaseConfigured && loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator color={colors.primary} />
+      </View>
+    );
+  }
+
+  if (!session) return <Redirect href="/sign-in" />;
+
+  return (
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textFaint,
+        tabBarStyle: {
+          backgroundColor: colors.bgElevated,
+          borderTopColor: colors.border,
+          height: 62,
+          paddingTop: 6,
+        },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+      }}
+    >
+      <Tabs.Screen
+        name="index"
+        options={{ title: 'Projects', tabBarIcon: ({ color }) => <Icon name="car" size={24} color={color} /> }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{ title: 'Settings', tabBarIcon: ({ color }) => <Icon name="sliders" size={22} color={color} /> }}
+      />
+    </Tabs>
+  );
+}
+
+const styles = StyleSheet.create({
+  center: { flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' },
+});
