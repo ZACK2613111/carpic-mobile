@@ -18,6 +18,7 @@ import type { EditorMode, SpinHotspot } from '@/features/projects/types';
 import { useProject } from '@/features/projects/useProjects';
 import { getSpinFrameUrls, saveSpin, uploadSpinFrame } from '@/features/spin/spin.api';
 import { SpinViewer } from '@/features/spin/SpinViewer';
+import { mapWithConcurrency } from '@/lib/concurrency';
 import { haptics } from '@/lib/haptics';
 import { colors, radius, spacing } from '@/theme';
 
@@ -114,14 +115,25 @@ export default function SpinScreen() {
         indexed.map((x) => x.uri),
         (p) => setCutProgress(p)
       );
-      let ok = 0;
-      for (let i = 0; i < cutouts.length; i++) {
-        const c = cutouts[i];
-        if (c) {
-          await uploadSpinFrame(id, indexed[i].frame, c, true);
-          ok++;
-        }
-      }
+      // Upload the cutout frames in parallel (bounded) instead of one-by-one.
+      // A single failed upload no longer aborts the rest — we just count it out.
+      const toUpload = cutouts
+        .map((c, i) => (c ? { uri: c, frame: indexed[i].frame } : null))
+        .filter((x): x is { uri: string; frame: number } => x !== null);
+      setCutProgress({ done: 0, total: toUpload.length });
+      const uploaded = await mapWithConcurrency(
+        toUpload,
+        async (item) => {
+          try {
+            await uploadSpinFrame(id, item.frame, item.uri, true);
+            return true;
+          } catch {
+            return false;
+          }
+        },
+        { concurrency: 4, onSettled: (done, total) => setCutProgress({ done, total }) }
+      );
+      const ok = uploaded.filter(Boolean).length;
       if (ok > 0) {
         setHasCutout(true);
         setBackgroundId((b) => (b === 'transparent' ? 'studio-graphite' : b));

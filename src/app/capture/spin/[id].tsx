@@ -29,16 +29,47 @@ export default function SpinCaptureScreen() {
 
   const [count, setCount] = useState(0);
   const [busy, setBusy] = useState(false);
+  // Frame uploads run in the background so the shutter stays responsive while the
+  // user keeps walking around the car; we await them all when finishing.
+  const uploads = useRef<Promise<boolean>[]>([]);
 
   const progress = Math.min(1, Math.max(0, count / TARGET));
+
+  const queueUpload = useCallback(
+    (index: number, uri: string) => {
+      const task = (async () => {
+        try {
+          await uploadSpinFrame(id, index, uri, false);
+          return true;
+        } catch {
+          // One retry — losing a frame to a transient blip mid-walk would leave a
+          // gap in the spin, so it's worth a second attempt before giving up.
+          try {
+            await uploadSpinFrame(id, index, uri, false);
+            return true;
+          } catch {
+            return false;
+          }
+        }
+      })();
+      uploads.current.push(task);
+    },
+    [id]
+  );
 
   const finish = useCallback(
     async (frames: number) => {
       setBusy(true);
       try {
+        const results = await Promise.all(uploads.current);
+        const failed = results.filter((ok) => !ok).length;
         await saveSpin(id, { ...EMPTY_SPIN, frameCount: frames });
         haptics.success();
-        toast.show(`360° captured (${frames} frames)`, 'success');
+        if (failed > 0) {
+          toast.show(`360° saved · ${failed} frame${failed === 1 ? '' : 's'} failed to upload`, 'error');
+        } else {
+          toast.show(`360° captured (${frames} frames)`, 'success');
+        }
         router.replace({ pathname: '/spin/[id]', params: { id } });
       } catch (e) {
         toast.show(e instanceof Error ? e.message : 'Could not save 360', 'error');
@@ -55,8 +86,9 @@ export default function SpinCaptureScreen() {
     try {
       const photo = await cameraRef.current?.takePictureAsync({ quality: 0.7 });
       if (photo?.uri) {
-        await uploadSpinFrame(id, count, photo.uri, false);
+        const frameIndex = count;
         const next = count + 1;
+        queueUpload(frameIndex, photo.uri); // upload in the background, don't block
         setCount(next);
         haptics.medium();
         if (next >= TARGET) {
@@ -68,7 +100,7 @@ export default function SpinCaptureScreen() {
     } finally {
       setBusy(false);
     }
-  }, [busy, count, id, finish, toast]);
+  }, [busy, count, queueUpload, finish, toast]);
 
   if (!permission) {
     return (

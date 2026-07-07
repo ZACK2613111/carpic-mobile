@@ -7,24 +7,40 @@ export type CanvasRef = ReturnType<typeof useCanvasRef>;
  * Flatten the Skia canvas (background + cutout + hotspots) into a single image
  * file and return its file:// URI. PNG preserves transparency (for the
  * "transparent" background); JPEG produces a smaller opaque file.
+ *
+ * The GPU readback runs off the JS thread via `makeImageSnapshotAsync` so the UI
+ * stays responsive during export (falls back to the sync path if unavailable).
  */
 export async function exportCanvas(
   canvasRef: CanvasRef,
   format: 'png' | 'jpeg' = 'png'
 ): Promise<string> {
-  const image = canvasRef.current?.makeImageSnapshot();
+  const canvas = canvasRef.current;
+  if (!canvas) {
+    throw new Error('The canvas is not ready yet — please try again in a moment.');
+  }
+
+  const image = canvas.makeImageSnapshotAsync
+    ? await canvas.makeImageSnapshotAsync()
+    : canvas.makeImageSnapshot();
   if (!image) {
     throw new Error('The canvas is not ready yet — please try again in a moment.');
   }
 
-  const skFormat = format === 'jpeg' ? ImageFormat.JPEG : ImageFormat.PNG;
-  const base64 = image.encodeToBase64(skFormat, 100);
-  const ext = format === 'jpeg' ? 'jpg' : 'png';
-  const uri = `${FileSystem.cacheDirectory}carstudio-export-${Date.now()}.${ext}`;
+  try {
+    const skFormat = format === 'jpeg' ? ImageFormat.JPEG : ImageFormat.PNG;
+    const base64 = image.encodeToBase64(skFormat, 100);
+    const ext = format === 'jpeg' ? 'jpg' : 'png';
+    const uri = `${FileSystem.cacheDirectory}carstudio-export-${Date.now()}.${ext}`;
 
-  await FileSystem.writeAsStringAsync(uri, base64, {
-    encoding: FileSystem.EncodingType.Base64,
-  });
+    await FileSystem.writeAsStringAsync(uri, base64, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
 
-  return uri;
+    return uri;
+  } finally {
+    // Free the native bitmap promptly — repeated exports otherwise pile up
+    // full-res images in native memory until GC eventually runs.
+    image.dispose?.();
+  }
 }

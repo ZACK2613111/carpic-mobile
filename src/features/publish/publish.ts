@@ -20,24 +20,30 @@ export async function publishProject(project: Project, shots: Shot[], onStep?: P
 
   onStep?.('Preparing photos');
   const captured = shots.filter((s) => s.captured && s.image_path);
-  const manifestShots = [];
-  for (const s of captured) {
-    const useCutout = Boolean(s.cutout_path);
-    const path = useCutout ? (s.cutout_path as string) : (s.image_path as string);
-    const url = await signedUrlFor('projects', path, YEAR);
-    if (!url) continue;
-    const audioUrl = s.audio_path ? await signedUrlFor('projects', s.audio_path, YEAR) : null;
-    manifestShots.push({
-      slot: s.slot,
-      section: s.section,
-      label: getSlot(s.slot)?.label ?? s.slot,
-      url,
-      cutout: useCutout,
-      backgroundId: s.background_id,
-      hotspots: s.doc?.hotspots ?? [],
-      audioUrl,
-    });
-  }
+  // Sign every shot's URL(s) in parallel rather than one round-trip at a time;
+  // then drop any shot whose main image URL failed, preserving order.
+  const signed = await Promise.all(
+    captured.map(async (s) => {
+      const useCutout = Boolean(s.cutout_path);
+      const path = useCutout ? (s.cutout_path as string) : (s.image_path as string);
+      const [url, audioUrl] = await Promise.all([
+        signedUrlFor('projects', path, YEAR),
+        s.audio_path ? signedUrlFor('projects', s.audio_path, YEAR) : Promise.resolve(null),
+      ]);
+      if (!url) return null;
+      return {
+        slot: s.slot,
+        section: s.section,
+        label: getSlot(s.slot)?.label ?? s.slot,
+        url,
+        cutout: useCutout,
+        backgroundId: s.background_id,
+        hotspots: s.doc?.hotspots ?? [],
+        audioUrl,
+      };
+    })
+  );
+  const manifestShots = signed.filter((s): s is NonNullable<typeof s> => s !== null);
 
   let spin: unknown = null;
   if (project.spin && project.spin.frameCount > 0) {
