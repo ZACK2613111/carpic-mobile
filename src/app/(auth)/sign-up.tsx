@@ -32,12 +32,15 @@ export default function SignUp() {
     }
     setBusy(true);
     try {
-      await signUp(email.trim(), password, name.trim() || undefined);
-      Alert.alert(
-        'Almost there',
-        'Account created. If email confirmation is on for your Supabase project, confirm your email, then sign in.'
-      );
-      router.replace('/sign-in');
+      const { needsConfirmation } = await signUp(email.trim(), password, name.trim() || undefined);
+      if (needsConfirmation) {
+        Alert.alert('Confirm your email', 'Account created. Check your inbox to confirm your email, then sign in.');
+        router.replace('/sign-in');
+      } else {
+        // Confirmation is off: the user is already signed in — go straight in.
+        // The auth guard also redirects, so this just makes the transition instant.
+        router.replace('/');
+      }
     } catch (e) {
       Alert.alert('Sign up failed', e instanceof Error ? e.message : 'Please try again.');
     } finally {

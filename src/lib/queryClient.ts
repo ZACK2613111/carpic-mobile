@@ -23,3 +23,17 @@ export const asyncStoragePersister = createAsyncStoragePersister({
   storage: AsyncStorage,
   throttleTime: 1000,
 });
+
+/**
+ * Wipe all cached + persisted query data. Call this on sign-out so the next
+ * account never sees the previous user's projects flash in from the persisted
+ * AsyncStorage cache.
+ */
+export async function clearAppCache(): Promise<void> {
+  queryClient.clear();
+  try {
+    await asyncStoragePersister.removeClient();
+  } catch {
+    // best-effort — a failed cache wipe shouldn't block signing out
+  }
+}

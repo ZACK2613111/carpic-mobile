@@ -12,7 +12,8 @@
       "bundleIdentifier": "com.autodeclic.carstudio",
       "supportsTablet": true,
       "infoPlist": {
-        "NSPhotoLibraryAddUsageDescription": "CarStudio saves your finished car photos to your library."
+        "NSPhotoLibraryAddUsageDescription": "CarStudio saves your finished car photos to your library.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {

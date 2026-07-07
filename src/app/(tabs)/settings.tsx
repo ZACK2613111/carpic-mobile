@@ -1,6 +1,6 @@
 import Constants from 'expo-constants';
-import React from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import React, { useCallback } from 'react';
+import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
@@ -12,6 +12,19 @@ import { colors, radius, spacing } from '@/theme';
 
 export default function SettingsScreen() {
   const { user, signOut } = useAuth();
+
+  const confirmSignOut = useCallback(() => {
+    Alert.alert('Sign out', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Sign out',
+        style: 'destructive',
+        onPress: () => {
+          signOut().catch((e) => Alert.alert('Sign out failed', e instanceof Error ? e.message : 'Please try again.'));
+        },
+      },
+    ]);
+  }, [signOut]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -36,7 +49,7 @@ export default function SettingsScreen() {
           <Row icon="sparkles" label="Version" value={Constants.expoConfig?.version ?? '1.0.0'} />
         </Section>
 
-        <Button title="Sign out" variant="secondary" icon="logout" onPress={signOut} style={styles.signOut} />
+        <Button title="Sign out" variant="secondary" icon="logout" onPress={confirmSignOut} style={styles.signOut} />
       </ScrollView>
     </SafeAreaView>
   );
