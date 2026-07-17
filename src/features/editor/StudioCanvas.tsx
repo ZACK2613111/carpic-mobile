@@ -1,12 +1,19 @@
 import {
+  Blur,
   Canvas,
   Circle,
   Group,
   Image as SkiaImage,
   LinearGradient,
   matchFont,
+  Oval,
+  Paint,
   RadialGradient,
   Rect,
+  rect,
+  RoundedRect,
+  rrect,
+  type SkImage,
   Text as SkiaText,
   useImage,
   vec,
@@ -14,13 +21,19 @@ import {
 import React from 'react';
 import { Platform } from 'react-native';
 
-import type { Hotspot } from '@/features/projects/types';
-import { hotspotColor } from '@/theme';
+import type { Hotspot, PlateMask } from '@/features/projects/types';
+import { colors, hotspotColor } from '@/theme';
 import { getBackground, type BackgroundPreset } from './backgrounds';
 import type { CanvasRef } from './exportImage';
+import { groundShadowEllipse, shadowEnabled, shadowStyleFor } from './groundShadow';
 
 const PIN_R = 15;
 const FONT_SIZE = 15;
+// Sub-pixel blur on the cutout layer softens the hard matte edge left by
+// segmentation ("cut with scissors" look) without visibly blurring the car.
+const EDGE_FEATHER = 0.8;
+// Strong enough that plate characters can't be read back, even zoomed.
+const PLATE_BLUR = 12;
 
 const font = matchFont({
   fontFamily: Platform.select({ ios: 'Helvetica', android: 'sans-serif', default: 'sans-serif' }) as string,
@@ -38,6 +51,12 @@ type Props = {
   backgroundId: string;
   hotspots: Hotspot[];
   selectedId: string | null;
+  /** Ground-shadow override; undefined = per-background default. */
+  shadow?: boolean;
+  /** License-plate mask; undefined = none. */
+  plate?: PlateMask;
+  /** Draw the plate's selection stroke + resize handle. */
+  plateSelected?: boolean;
 };
 
 // Purely presentational: the editor owns gestures + the zoom transform and drives
@@ -53,18 +72,39 @@ export function StudioCanvas({
   backgroundId,
   hotspots,
   selectedId,
+  shadow,
+  plate,
+  plateSelected,
 }: Props) {
-  const original = useImage(originalUri ?? null);
-  const cutout = useImage(cutoutUri ?? null);
+  // Decode only the image actually drawn: feeding both URIs to useImage keeps
+  // two full-resolution bitmaps in memory at once — enough to OOM a low-RAM
+  // device. The original is only ever shown when there is no cutout.
+  const displayImage = useImage(cutoutUri ?? originalUri ?? null);
   const bg = getBackground(backgroundId);
-  const displayImage = cutout ?? original;
   const selected = selectedId ? hotspots.find((h) => h.id === selectedId) ?? null : null;
+
+  // Shadow + feather only make sense once the car is isolated from its
+  // background — never on a raw original photo.
+  const showingCutout = Boolean(cutoutUri);
+  const withShadow = showingCutout && shadowEnabled(bg, shadow);
 
   return (
     <Canvas ref={canvasRef} style={{ width, height }}>
       <BackgroundLayer bg={bg} width={width} height={height} />
+      {withShadow ? <GroundShadow bg={bg} width={width} height={height} /> : null}
       {displayImage ? (
-        <SkiaImage image={displayImage} x={0} y={0} width={width} height={height} fit="contain" />
+        <Group layer={showingCutout ? <Paint><Blur blur={EDGE_FEATHER} /></Paint> : undefined}>
+          <SkiaImage image={displayImage} x={0} y={0} width={width} height={height} fit="contain" />
+        </Group>
+      ) : null}
+      {plate ? (
+        <PlateLayer
+          plate={plate}
+          image={displayImage}
+          width={width}
+          height={height}
+          selected={Boolean(plateSelected)}
+        />
       ) : null}
       {selected ? (
         <Crosshair x={selected.x * width} y={selected.y * height} width={width} height={height} />
@@ -73,6 +113,71 @@ export function StudioCanvas({
         <PinLayer key={h.id} h={h} index={i} width={width} height={height} selected={h.id === selectedId} />
       ))}
     </Canvas>
+  );
+}
+
+function PlateLayer({
+  plate,
+  image,
+  width,
+  height,
+  selected,
+}: {
+  plate: PlateMask;
+  image: SkImage | null;
+  width: number;
+  height: number;
+  selected: boolean;
+}) {
+  const x = plate.x * width;
+  const y = plate.y * height;
+  const w = plate.w * width;
+  const h = plate.h * height;
+  const r = Math.min(w, h) * 0.18;
+  const clip = rrect(rect(x, y, w, h), r, r);
+
+  return (
+    <Group>
+      {plate.style === 'blur' && image ? (
+        // Redraw the same contain-fit image clipped to the plate, blurred —
+        // pixels line up 1:1 with the layer underneath, so only the plate blurs.
+        <Group clip={clip} layer={<Paint><Blur blur={PLATE_BLUR} /></Paint>}>
+          <SkiaImage image={image} x={0} y={0} width={width} height={height} fit="contain" />
+        </Group>
+      ) : (
+        <Group>
+          <RoundedRect x={x} y={y} width={w} height={h} r={r} color={plate.color ?? '#14161A'} />
+          <RoundedRect
+            x={x} y={y} width={w} height={h} r={r}
+            style="stroke" strokeWidth={1.5} color="#FFFFFF" opacity={0.35}
+          />
+        </Group>
+      )}
+      {selected ? (
+        <Group>
+          <RoundedRect x={x} y={y} width={w} height={h} r={r} style="stroke" strokeWidth={2} color={colors.primary} />
+          <Circle cx={x + w} cy={y + h} r={7} color="#FFFFFF" />
+          <Circle cx={x + w} cy={y + h} r={7} style="stroke" strokeWidth={2} color={colors.primary} />
+        </Group>
+      ) : null}
+    </Group>
+  );
+}
+
+function GroundShadow({ bg, width, height }: { bg: BackgroundPreset; width: number; height: number }) {
+  const { cx, cy, rx, ry } = groundShadowEllipse(width, height);
+  const style = shadowStyleFor(bg);
+  return (
+    <Oval
+      x={cx - rx}
+      y={cy - ry}
+      width={rx * 2}
+      height={ry * 2}
+      color={style.color}
+      opacity={style.opacity}
+    >
+      <Blur blur={style.blur} />
+    </Oval>
   );
 }
 
