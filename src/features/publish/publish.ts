@@ -1,5 +1,6 @@
 import * as FileSystem from 'expo-file-system/legacy';
 
+import { getBrand, watermarkVisible } from '@/features/branding/brand';
 import { getSlot } from '@/features/capture/shotTemplate';
 import { updateProject } from '@/features/projects/projects.api';
 import type { Project } from '@/features/projects/types';
@@ -92,7 +93,15 @@ export async function publishProject(project: Project, shots: Shot[], onStep?: P
   }
 
   onStep?.('Publishing');
-  const manifest = { name: project.name, generatedAt: new Date().toISOString(), shots: manifestShots, spin };
+  const brand = getBrand();
+  const watermark = watermarkVisible(brand) ? { text: brand.text.trim(), position: brand.position } : null;
+  const manifest = {
+    name: project.name,
+    generatedAt: new Date().toISOString(),
+    shots: manifestShots,
+    spin,
+    watermark,
+  };
 
   const manifestTmp = `${FileSystem.cacheDirectory}manifest-${project.id}.json`;
   await FileSystem.writeAsStringAsync(manifestTmp, JSON.stringify(manifest), {

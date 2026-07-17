@@ -16,6 +16,7 @@ import { SegmentedControl } from '@/components/SegmentedControl';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { useBackgroundRemoval } from '@/features/background-removal/useBackgroundRemoval';
+import { useBrand, watermarkVisible } from '@/features/branding/brand';
 import { BackgroundStrip } from '@/features/editor/BackgroundStrip';
 import { getBackground } from '@/features/editor/backgrounds';
 import { CoachMarks } from '@/features/editor/CoachMarks';
@@ -86,6 +87,8 @@ export default function EditorScreen() {
   const slot = getSlot(shot?.slot ?? '');
   const isEngine = Boolean(slot?.audio);
   const { data: audioUrl } = useShotSignedUrl(shot?.audio_path ?? null);
+  const brand = useBrand();
+  const watermark = watermarkVisible(brand) ? { text: brand.text, position: brand.position } : undefined;
 
   // ---- composition: hydration, coach marks, gestures, export ----
   useShotHydration(shot);
@@ -258,6 +261,7 @@ export default function EditorScreen() {
                 shadow={shadow}
                 plate={plate}
                 plateSelected={plateSel}
+                watermark={watermark}
               />
             </Animated.View>
           ) : null}

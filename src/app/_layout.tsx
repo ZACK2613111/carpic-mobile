@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ToastProvider } from '@/components/Toast';
+import { loadBrand } from '@/features/branding/brand';
 import { initUploads } from '@/features/uploads/uploads';
 import { asyncStoragePersister, dehydrateOptions, queryClient } from '@/lib/queryClient';
 import { AuthProvider } from '@/providers/AuthProvider';
@@ -19,6 +20,7 @@ export default function RootLayout() {
   // Restore the persisted upload outbox and start draining (offline-first).
   useEffect(() => {
     initUploads();
+    void loadBrand();
   }, []);
 
   return (

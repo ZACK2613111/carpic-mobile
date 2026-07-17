@@ -21,6 +21,7 @@ import {
 import React from 'react';
 import { Platform } from 'react-native';
 
+import { watermarkAnchor, type WatermarkPosition } from '@/features/branding/brand';
 import type { Hotspot, PlateMask } from '@/features/projects/types';
 import { colors, hotspotColor } from '@/theme';
 import { getBackground, type BackgroundPreset } from './backgrounds';
@@ -57,6 +58,8 @@ type Props = {
   plate?: PlateMask;
   /** Draw the plate's selection stroke + resize handle. */
   plateSelected?: boolean;
+  /** Seller watermark burned into the image; undefined = none. */
+  watermark?: { text: string; position: WatermarkPosition };
 };
 
 // Purely presentational: the editor owns gestures + the zoom transform and drives
@@ -75,6 +78,7 @@ export function StudioCanvas({
   shadow,
   plate,
   plateSelected,
+  watermark,
 }: Props) {
   // Decode only the image actually drawn: feeding both URIs to useImage keeps
   // two full-resolution bitmaps in memory at once — enough to OOM a low-RAM
@@ -112,7 +116,51 @@ export function StudioCanvas({
       {hotspots.map((h, i) => (
         <PinLayer key={h.id} h={h} index={i} width={width} height={height} selected={h.id === selectedId} />
       ))}
+      {watermark && watermark.text.trim() ? (
+        <Watermark text={watermark.text.trim()} position={watermark.position} width={width} height={height} />
+      ) : null}
     </Canvas>
+  );
+}
+
+const WM_FONT_SIZE = 16;
+const wmFont = matchFont({
+  fontFamily: Platform.select({ ios: 'Helvetica', android: 'sans-serif', default: 'sans-serif' }) as string,
+  fontSize: WM_FONT_SIZE,
+  fontStyle: 'normal',
+  fontWeight: 'bold',
+});
+
+function Watermark({
+  text,
+  position,
+  width,
+  height,
+}: {
+  text: string;
+  position: WatermarkPosition;
+  width: number;
+  height: number;
+}) {
+  // Scale with the canvas so the stamp reads the same on any export resolution.
+  const margin = Math.round(Math.min(width, height) * 0.04);
+  const padX = 10;
+  const padY = 6;
+  const textW = wmFont ? wmFont.measureText(text).width : text.length * WM_FONT_SIZE * 0.55;
+  const boxW = textW + padX * 2;
+  const boxH = WM_FONT_SIZE + padY * 2;
+  const anchor = watermarkAnchor(position, width, height, margin);
+  // anchor.x is the text edge per alignment; derive the pill's left edge.
+  const boxX =
+    anchor.align === 'left' ? anchor.x : anchor.align === 'center' ? anchor.x - boxW / 2 : anchor.x - boxW;
+  const boxY = anchor.y - boxH;
+  const textX = boxX + padX;
+  const textY = boxY + padY + WM_FONT_SIZE * 0.8;
+  return (
+    <Group>
+      <RoundedRect x={boxX} y={boxY} width={boxW} height={boxH} r={boxH / 2} color="#000000" opacity={0.42} />
+      {wmFont ? <SkiaText x={textX} y={textY} text={text} font={wmFont} color="#FFFFFF" /> : null}
+    </Group>
   );
 }
 

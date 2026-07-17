@@ -5,13 +5,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { Icon, type IconName } from '@/components/Icon';
+import { SegmentedControl } from '@/components/SegmentedControl';
 import { Text } from '@/components/Text';
+import { TextField } from '@/components/TextField';
 import { activeEngine } from '@/features/background-removal/registry';
+import { setBrand, useBrand, type WatermarkPosition } from '@/features/branding/brand';
 import { useAuth } from '@/providers/AuthProvider';
 import { colors, radius, spacing } from '@/theme';
 
 export default function SettingsScreen() {
   const { user, signOut } = useAuth();
+  const brand = useBrand();
 
   const confirmSignOut = useCallback(() => {
     Alert.alert('Sign out', 'Are you sure you want to sign out?', [
@@ -33,6 +37,43 @@ export default function SettingsScreen() {
 
         <Section title="Account">
           <Row icon="user" label="Email" value={user?.email ?? '—'} />
+        </Section>
+
+        <Section title="Watermark">
+          <View style={styles.brandBody}>
+            <TextField
+              label="Phone or dealer name"
+              leftIcon="user"
+              value={brand.text}
+              onChangeText={(text) => setBrand({ text })}
+              placeholder="e.g. 0555 12 34 56 · Auto Déclic"
+              maxLength={60}
+              autoCapitalize="words"
+            />
+            <View style={styles.brandToggleRow}>
+              <Text variant="body" muted>
+                Stamp it on every photo
+              </Text>
+              <Button
+                title={brand.enabled ? 'On' : 'Off'}
+                variant={brand.enabled ? 'primary' : 'secondary'}
+                size="sm"
+                onPress={() => setBrand({ enabled: !brand.enabled })}
+              />
+            </View>
+            <SegmentedControl<WatermarkPosition>
+              value={brand.position}
+              onChange={(position) => setBrand({ position })}
+              options={[
+                { value: 'bottom-left', label: 'Left' },
+                { value: 'bottom-center', label: 'Center' },
+                { value: 'bottom-right', label: 'Right' },
+              ]}
+            />
+            <Text variant="caption" faint>
+              Protects your photos from being reused on Ouedkniss or Facebook. Applies to exports and shared links.
+            </Text>
+          </View>
         </Section>
 
         <Section title="Background removal">
@@ -114,5 +155,7 @@ const styles = StyleSheet.create({
   },
   rowValue: { flexShrink: 1, textAlign: 'right' },
   note: { paddingHorizontal: spacing.xs, paddingBottom: spacing.md },
+  brandBody: { paddingVertical: spacing.md, gap: spacing.md },
+  brandToggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   signOut: { marginTop: spacing.sm },
 });

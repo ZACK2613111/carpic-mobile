@@ -30,6 +30,12 @@
       .plate { position: absolute; border-radius: 6px; pointer-events: none; }
       .plate.pblur { backdrop-filter: blur(9px); -webkit-backdrop-filter: blur(9px);
         background: rgba(125,125,135,.28); }
+      /* seller watermark (mirrors the app's Skia stamp) */
+      .wm { position: absolute; bottom: 4%; max-width: 92%; background: rgba(0,0,0,.42); color: #fff;
+        font-size: 13px; font-weight: 700; padding: 5px 10px; border-radius: 999px; pointer-events: none;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .wm.wleft { left: 4%; } .wm.wright { right: 4%; }
+      .wm.wcenter { left: 50%; transform: translateX(-50%); }
       .hint { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%);
         background: rgba(0,0,0,.5); color: #fff; font-size: 12px; padding: 5px 12px; border-radius: 999px; }
       .badge360 { position: absolute; top: 10px; left: 10px; background: var(--primary); color: #fff;
@@ -107,6 +113,14 @@
         s.style.opacity = String(shadowOpacity(bgId));
         stage.appendChild(s);
       }
+      // Manifest-level seller watermark, stamped on every stage (textContent, no HTML).
+      var WATERMARK = null;
+      function addWatermark(stage) {
+        if (!WATERMARK || !WATERMARK.text) return;
+        var pos = WATERMARK.position === 'bottom-left' ? 'wleft'
+          : WATERMARK.position === 'bottom-center' ? 'wcenter' : 'wright';
+        stage.appendChild(el('div', 'wm ' + pos, WATERMARK.text));
+      }
       function pinColor(h) {
         if (h.kind === 'marketing') return '#4b7bff';
         return h.severity === 'high' ? '#ff5a5a' : h.severity === 'low' ? '#ffd23a' : '#ffa83a';
@@ -153,6 +167,7 @@
         var img = el('img');
         stage.appendChild(img);
         stage.appendChild(el('div', 'badge360', '360°'));
+        addWatermark(stage);
         var hintEl = el('div', 'hint', '↔ Drag to rotate');
         stage.appendChild(hintEl);
 
@@ -206,6 +221,7 @@
           if (shot.plate.style === 'brand') pl.style.background = shot.plate.color || '#14161a';
           stage.appendChild(pl);
         }
+        addWatermark(stage);
         renderPins(stage, shot.hotspots);
         lb.appendChild(stage);
         if (shot.audioUrl) {
@@ -216,6 +232,7 @@
       document.getElementById('lbClose').onclick = function () { document.getElementById('lb').classList.remove('open'); };
 
       function render(m) {
+        WATERMARK = m.watermark || null;
         var app = document.getElementById('app');
         app.innerHTML = '';
         app.appendChild(el('div', 'title', m.name || 'Vehicle'));
