@@ -18,6 +18,20 @@
       .loading, .err { text-align: center; color: var(--muted); padding: 64px 16px; }
       .section-label { color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .5px;
         text-transform: uppercase; margin: 22px 4px 10px; }
+      /* condition report */
+      .condition { display: flex; flex-direction: column; gap: 8px; }
+      .cond-item { display: flex; align-items: flex-start; gap: 10px; background: var(--surface);
+        border: 1px solid var(--border); border-radius: 12px; padding: 11px 12px; }
+      .cond-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; flex: none; }
+      .cond-body { flex: 1; min-width: 0; }
+      .cond-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+      .cond-title { font-size: 14px; font-weight: 700; }
+      .cond-area { font-size: 12px; color: var(--muted); }
+      .cond-desc { font-size: 13px; color: var(--muted); margin-top: 2px; }
+      .sevpill { flex: none; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
+      .sevpill.sev-high { background: rgba(255,90,90,.16); color: #ff5a5a; }
+      .sevpill.sev-medium { background: rgba(255,168,58,.16); color: #ffa83a; }
+      .sevpill.sev-low { background: rgba(255,210,58,.16); color: #ffd23a; }
 
       /* stage (360 + lightbox share this) */
       .stage { position: relative; width: 100%; aspect-ratio: 4/3; border-radius: 16px; overflow: hidden;
@@ -232,6 +246,45 @@
       }
       document.getElementById('lbClose').onclick = function () { document.getElementById('lb').classList.remove('open'); };
 
+      var SEV_LABEL = { high: 'Major', medium: 'Moderate', low: 'Minor' };
+      var SEV_RANK = { high: 3, medium: 2, low: 1 };
+      // Aggregate inspection pins across shots + 360 into a buyer-facing report.
+      function buildCondition(m) {
+        var items = [];
+        (m.shots || []).forEach(function (s) {
+          (s.hotspots || []).forEach(function (h) {
+            if (h.kind === 'inspection') items.push({ area: s.label || '', h: h });
+          });
+        });
+        if (m.spin && m.spin.hotspots) {
+          m.spin.hotspots.forEach(function (h) {
+            if (h.kind === 'inspection') items.push({ area: '360°', h: h });
+          });
+        }
+        if (!items.length) return null;
+        items.sort(function (a, b) { return (SEV_RANK[b.h.severity] || 2) - (SEV_RANK[a.h.severity] || 2); });
+
+        var wrap = document.createElement('div');
+        wrap.appendChild(el('div', 'section-label', 'Condition · ' + items.length + ' point' + (items.length === 1 ? '' : 's')));
+        var list = el('div', 'condition');
+        items.forEach(function (it) {
+          var sev = it.h.severity || 'medium';
+          var row = el('div', 'cond-item');
+          var dot = el('span', 'cond-dot'); dot.style.background = pinColor(it.h); row.appendChild(dot);
+          var body = el('div', 'cond-body');
+          var head = el('div', 'cond-head');
+          head.appendChild(el('span', 'cond-title', it.h.title || 'Point'));
+          if (it.area) head.appendChild(el('span', 'cond-area', it.area));
+          body.appendChild(head);
+          if (it.h.description) body.appendChild(el('div', 'cond-desc', it.h.description));
+          row.appendChild(body);
+          row.appendChild(el('span', 'sevpill sev-' + sev, SEV_LABEL[sev] || 'Moderate'));
+          list.appendChild(row);
+        });
+        wrap.appendChild(list);
+        return wrap;
+      }
+
       function render(m) {
         WATERMARK = m.watermark || null;
         var app = document.getElementById('app');
@@ -242,6 +295,9 @@
         if (m.spin && m.spin.frameCount > 0 && m.spin.frames && m.spin.frames.length) {
           app.appendChild(build360(m.spin));
         }
+
+        var condition = buildCondition(m);
+        if (condition) app.appendChild(condition);
 
         // group shots by section
         var groups = {};

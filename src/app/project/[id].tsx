@@ -15,7 +15,8 @@ import { Text } from '@/components/Text';
 import { TextField } from '@/components/TextField';
 import { useToast } from '@/components/Toast';
 import { captureLinkUrl, getOrCreateCaptureLink } from '@/features/capture-links/captureLinks.api';
-import { GROUP_LABELS, GROUP_ORDER, SHOT_TEMPLATE, type ShotSlot } from '@/features/capture/shotTemplate';
+import { getSlot, GROUP_LABELS, GROUP_ORDER, SHOT_TEMPLATE, type ShotSlot } from '@/features/capture/shotTemplate';
+import { SEVERITY_LABEL, summarizeInspection, type HotspotGroup } from '@/features/inspection/report';
 import { publishProject } from '@/features/publish/publish';
 import type { Shot } from '@/features/shots/types';
 import { shotKeys, useShots, useShotSignedUrl } from '@/features/shots/useShots';
@@ -25,7 +26,7 @@ import { useProject, useUpdateProject } from '@/features/projects/useProjects';
 import { decodeVin, normalizeVin, vinSummary } from '@/features/vehicle/vin';
 import { uploadFileUri, type UploadTask } from '@/lib/uploadQueue';
 import { useRouteId } from '@/lib/useRouteId';
-import { colors, radius, spacing } from '@/theme';
+import { colors, radius, severityColor, spacing } from '@/theme';
 
 export default function ProjectDashboard() {
   const id = useRouteId();
@@ -62,6 +63,18 @@ export default function ProjectDashboard() {
     });
     return map;
   }, [pendingUploads]);
+
+  // Condition report: aggregate inspection pins across every shot + the 360.
+  const inspection = useMemo(() => {
+    const groups: HotspotGroup[] = (shots ?? []).map((s) => ({
+      area: getSlot(s.slot)?.label ?? s.slot,
+      hotspots: s.doc?.hotspots ?? [],
+    }));
+    if (project?.spin?.hotspots?.length) {
+      groups.push({ area: '360°', hotspots: project.spin.hotspots });
+    }
+    return summarizeInspection(groups);
+  }, [shots, project]);
 
   const capturedCount = (shots ?? []).filter((s) => s.captured).length;
   const total = SHOT_TEMPLATE.length;
@@ -167,6 +180,36 @@ export default function ProjectDashboard() {
 
           {/* vehicle (VIN) */}
           <VinCard projectId={id} initialVin={project?.vin ?? ''} />
+
+          {/* condition report (only once there are inspection points) */}
+          {inspection.inspectionCount > 0 ? (
+            <View style={styles.vinCard}>
+              <View style={styles.vinHeader}>
+                <Icon name="wrench" size={18} color={colors.primary} />
+                <Text variant="bodyStrong">Condition</Text>
+                <Text variant="caption" muted style={styles.conditionCount}>
+                  {inspection.inspectionCount} point{inspection.inspectionCount === 1 ? '' : 's'}
+                </Text>
+              </View>
+              <View style={styles.vinChips}>
+                {(['high', 'medium', 'low'] as const).map((sev) =>
+                  inspection.bySeverity[sev] > 0 ? (
+                    <View key={sev} style={styles.sevChip}>
+                      <View style={[styles.sevDot, { backgroundColor: severityColor(sev) }]} />
+                      <Text variant="caption">
+                        {inspection.bySeverity[sev]} {SEVERITY_LABEL[sev].toLowerCase()}
+                      </Text>
+                    </View>
+                  ) : null
+                )}
+              </View>
+              {inspection.marketingCount > 0 ? (
+                <Text variant="caption" faint>
+                  + {inspection.marketingCount} highlight{inspection.marketingCount === 1 ? '' : 's'}
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
 
           {/* primary actions */}
           <Button
@@ -425,6 +468,17 @@ const styles = StyleSheet.create({
   },
   vinHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   vinChips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+  conditionCount: { marginLeft: 'auto' },
+  sevChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
+  sevDot: { width: 8, height: 8, borderRadius: 4 },
   publishOverlay: {
     position: 'absolute',
     top: 0,
