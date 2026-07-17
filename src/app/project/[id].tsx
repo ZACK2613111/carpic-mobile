@@ -14,7 +14,10 @@ import { GROUP_LABELS, GROUP_ORDER, SHOT_TEMPLATE, type ShotSlot } from '@/featu
 import { publishProject } from '@/features/publish/publish';
 import type { Shot } from '@/features/shots/types';
 import { useShots, useShotSignedUrl } from '@/features/shots/useShots';
+import { usePendingUploads } from '@/features/uploads/usePendingUploads';
+import type { ShotUploadPayload } from '@/features/uploads/uploads';
 import { useProject } from '@/features/projects/useProjects';
+import { uploadFileUri, type UploadTask } from '@/lib/uploadQueue';
 import { colors, radius, spacing } from '@/theme';
 
 export default function ProjectDashboard() {
@@ -31,6 +34,17 @@ export default function ProjectDashboard() {
     });
     return map;
   }, [shots]);
+
+  // Photos captured but not yet synced (offline / upload in flight) — shown on
+  // their tile from the local outbox file until the real row lands.
+  const pendingUploads = usePendingUploads(id);
+  const pendingBySlot = useMemo(() => {
+    const map: Record<string, UploadTask> = {};
+    pendingUploads.forEach((t) => {
+      if (t.kind === 'shot') map[(t.payload as ShotUploadPayload).slot] = t;
+    });
+    return map;
+  }, [pendingUploads]);
 
   const capturedCount = (shots ?? []).filter((s) => s.captured).length;
   const total = SHOT_TEMPLATE.length;
@@ -59,6 +73,9 @@ export default function ProjectDashboard() {
     const shot = bySlot[slot.id];
     if (shot?.captured) {
       router.push({ pathname: '/editor/[id]', params: { id: shot.id } });
+    } else if (pendingBySlot[slot.id]) {
+      // Captured but not synced yet — the editor needs the DB row to exist.
+      toast.show('Photo is still syncing — editing unlocks once it uploads', 'info');
     } else {
       router.push({ pathname: '/capture/[id]', params: { id, start: slot.id } });
     }
@@ -93,6 +110,15 @@ export default function ProjectDashboard() {
             <View style={styles.track}>
               <View style={[styles.fill, { width: `${pct}%` }]} />
             </View>
+            {pendingUploads.length > 0 ? (
+              <View style={styles.pendingRow}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text variant="caption" muted>
+                  {pendingUploads.length} photo{pendingUploads.length === 1 ? '' : 's'} waiting to upload — saved
+                  locally, will sync automatically
+                </Text>
+              </View>
+            ) : null}
           </View>
 
           {/* primary actions */}
@@ -127,7 +153,13 @@ export default function ProjectDashboard() {
                 </Text>
                 <View style={styles.grid}>
                   {slots.map((slot) => (
-                    <ShotTile key={slot.id} slot={slot} shot={bySlot[slot.id]} onPress={() => openSlot(slot)} />
+                    <ShotTile
+                      key={slot.id}
+                      slot={slot}
+                      shot={bySlot[slot.id]}
+                      pendingUri={pendingBySlot[slot.id] ? uploadFileUri(pendingBySlot[slot.id]) : null}
+                      onPress={() => openSlot(slot)}
+                    />
                   ))}
                 </View>
               </View>
@@ -173,13 +205,33 @@ function ActionTile({
   );
 }
 
-function ShotTile({ slot, shot, onPress }: { slot: ShotSlot; shot?: Shot; onPress: () => void }) {
+function ShotTile({
+  slot,
+  shot,
+  pendingUri,
+  onPress,
+}: {
+  slot: ShotSlot;
+  shot?: Shot;
+  pendingUri?: string | null;
+  onPress: () => void;
+}) {
   const { data: url } = useShotSignedUrl(shot?.captured ? (shot.cutout_path ?? shot.image_path) : null);
+  // A queued (not-yet-synced) capture shows its local outbox file so offline
+  // work is visible immediately, with an "uploading" badge instead of the check.
+  const displayUri = url ?? (!shot?.captured ? pendingUri : null);
+  const isPending = !shot?.captured && Boolean(pendingUri);
   return (
     <PressableScale style={styles.tile} onPress={onPress} haptic="selection">
       <View style={styles.tileThumb}>
-        {url ? (
-          <Image source={{ uri: url }} style={styles.tileImg} contentFit="cover" cachePolicy="memory-disk" transition={120} />
+        {displayUri ? (
+          <Image
+            source={{ uri: displayUri }}
+            style={styles.tileImg}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            transition={120}
+          />
         ) : (
           <Icon name={slot.group === 'engine' ? 'car' : 'camera'} size={20} color={colors.textFaint} />
         )}
@@ -187,9 +239,13 @@ function ShotTile({ slot, shot, onPress }: { slot: ShotSlot; shot?: Shot; onPres
           <View style={styles.badge}>
             <Icon name="check" size={12} color="#FFFFFF" />
           </View>
+        ) : isPending ? (
+          <View style={[styles.badge, styles.badgePending]}>
+            <Icon name="up" size={12} color="#FFFFFF" />
+          </View>
         ) : null}
       </View>
-      <Text variant="caption" numberOfLines={1} muted={!shot?.captured} center>
+      <Text variant="caption" numberOfLines={1} muted={!shot?.captured && !isPending} center>
         {slot.label}
       </Text>
     </PressableScale>
@@ -249,6 +305,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  badgePending: { backgroundColor: colors.primary },
+  pendingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   publishOverlay: {
     position: 'absolute',
     top: 0,

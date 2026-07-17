@@ -1,6 +1,6 @@
-import { useQueryClient } from '@tanstack/react-query';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Image } from 'expo-image';
+import { useKeepAwake } from 'expo-keep-awake';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
@@ -13,15 +13,15 @@ import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { GuideOverlay } from '@/features/capture/GuideOverlay';
 import { SHOT_TEMPLATE, slotPosition } from '@/features/capture/shotTemplate';
-import { uploadShotAsset, upsertShot } from '@/features/shots/shots.api';
-import { shotKeys } from '@/features/shots/useShots';
+import { enqueueShotUpload } from '@/features/uploads/uploads';
 import { haptics } from '@/lib/haptics';
+import { deleteLocal, prepareForUpload } from '@/lib/imagePrep';
 import { colors, radius, spacing } from '@/theme';
 
 export default function CaptureScreen() {
+  useKeepAwake(); // a full guided session takes minutes — don't let the screen sleep mid-shoot
   const { id, start } = useLocalSearchParams<{ id: string; start?: string }>();
   const router = useRouter();
-  const qc = useQueryClient();
   const toast = useToast();
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
@@ -29,9 +29,14 @@ export default function CaptureScreen() {
   const [index, setIndex] = useState(() => (start ? slotPosition(start) : 0));
   // Bind slot metadata to the photo at capture time (not at approval time) so a
   // re-render that changes `index` can't write the wrong slot.
-  const [pending, setPending] = useState<{ uri: string; slotId: string; section: string; position: number } | null>(
-    null
-  );
+  const [pending, setPending] = useState<{
+    uri: string;
+    width?: number;
+    height?: number;
+    slotId: string;
+    section: string;
+    position: number;
+  } | null>(null);
   const [busy, setBusy] = useState(false);
 
   const total = SHOT_TEMPLATE.length;
@@ -52,7 +57,14 @@ export default function CaptureScreen() {
       const photo = await cameraRef.current?.takePictureAsync({ quality: 0.8 });
       if (photo?.uri) {
         haptics.medium();
-        setPending({ uri: photo.uri, slotId: slot.id, section: slot.group, position: index });
+        setPending({
+          uri: photo.uri,
+          width: photo.width,
+          height: photo.height,
+          slotId: slot.id,
+          section: slot.group,
+          position: index,
+        });
       }
     } catch {
       toast.show('Could not take the photo', 'error');
@@ -63,17 +75,27 @@ export default function CaptureScreen() {
     if (!pending) return;
     setBusy(true);
     try {
-      const path = await uploadShotAsset(id, pending.slotId, 'original', pending.uri, 'image/jpeg');
-      await upsertShot(id, pending.slotId, pending.section, pending.position, { image_path: path, captured: true });
-      qc.invalidateQueries({ queryKey: shotKeys.list(id) });
+      // Offline-first: resize, stash in the durable outbox, advance immediately.
+      // The actual upload + DB row happen in the queue, with retry — no network
+      // needed right now, and a failed upload can't lose the photo anymore.
+      const prepared = await prepareForUpload(pending.uri, pending.width, pending.height);
+      await enqueueShotUpload({
+        projectId: id,
+        slot: pending.slotId,
+        section: pending.section,
+        position: pending.position,
+        sourceUri: prepared.uri,
+      });
       haptics.success();
+      void deleteLocal(pending.uri);
+      if (prepared.resized) void deleteLocal(prepared.uri);
       advance();
     } catch (e) {
-      toast.show(e instanceof Error ? e.message : 'Upload failed', 'error');
+      toast.show(e instanceof Error ? e.message : 'Could not save the photo', 'error');
     } finally {
       setBusy(false);
     }
-  }, [pending, id, qc, advance, toast]);
+  }, [pending, id, advance, toast]);
 
   // ---- permission gate ----
   if (!permission) {

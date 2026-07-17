@@ -1,4 +1,5 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { useKeepAwake } from 'expo-keep-awake';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
@@ -11,8 +12,10 @@ import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { EMPTY_SPIN } from '@/features/projects/types';
-import { saveSpin, uploadSpinFrame } from '@/features/spin/spin.api';
+import { saveSpin } from '@/features/spin/spin.api';
+import { enqueueSpinFrameUpload } from '@/features/uploads/uploads';
 import { haptics } from '@/lib/haptics';
+import { deleteLocal, prepareForUpload } from '@/lib/imagePrep';
 import { colors, radius, spacing } from '@/theme';
 
 const TARGET = 24;
@@ -21,6 +24,7 @@ const RING = 46;
 const CIRC = 2 * Math.PI * RING;
 
 export default function SpinCaptureScreen() {
+  useKeepAwake(); // walking around the car takes a while — keep the screen on
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const toast = useToast();
@@ -29,30 +33,36 @@ export default function SpinCaptureScreen() {
 
   const [count, setCount] = useState(0);
   const [busy, setBusy] = useState(false);
-  // Frame uploads run in the background so the shutter stays responsive while the
-  // user keeps walking around the car; we await them all when finishing.
-  const uploads = useRef<Promise<boolean>[]>([]);
+  // Frames are resized then stashed in the durable upload queue in the background
+  // so the shutter stays responsive. Only the LOCAL stash is awaited at finish —
+  // the network uploads happen in the queue, with retry, even after leaving.
+  const stashes = useRef<Promise<void>[]>([]);
+  const stashFailures = useRef(0);
 
   const progress = Math.min(1, Math.max(0, count / TARGET));
 
-  const queueUpload = useCallback(
-    (index: number, uri: string) => {
+  const queueFrame = useCallback(
+    (index: number, uri: string, width?: number, height?: number) => {
       const task = (async () => {
+        // Downscale before queueing: 24 raw sensor frames would cost tens of MB
+        // of mobile data per spin. Falls back to the raw photo if resizing fails.
+        let stashUri = uri;
+        let resized = false;
         try {
-          await uploadSpinFrame(id, index, uri, false);
-          return true;
+          const prepared = await prepareForUpload(uri, width, height);
+          stashUri = prepared.uri;
+          resized = prepared.resized;
         } catch {
-          // One retry — losing a frame to a transient blip mid-walk would leave a
-          // gap in the spin, so it's worth a second attempt before giving up.
-          try {
-            await uploadSpinFrame(id, index, uri, false);
-            return true;
-          } catch {
-            return false;
-          }
+          // queue the raw frame rather than dropping it
         }
-      })();
-      uploads.current.push(task);
+        await enqueueSpinFrameUpload({ projectId: id, frame: index, sourceUri: stashUri });
+        // the outbox holds its own durable copy — free the temp files
+        void deleteLocal(uri);
+        if (resized) void deleteLocal(stashUri);
+      })().catch(() => {
+        stashFailures.current += 1;
+      });
+      stashes.current.push(task);
     },
     [id]
   );
@@ -61,18 +71,24 @@ export default function SpinCaptureScreen() {
     async (frames: number) => {
       setBusy(true);
       try {
-        const results = await Promise.all(uploads.current);
-        const failed = results.filter((ok) => !ok).length;
-        await saveSpin(id, { ...EMPTY_SPIN, frameCount: frames });
+        // Local-only wait (file copies into the outbox) — fast even offline.
+        await Promise.all(stashes.current);
+        try {
+          await saveSpin(id, { ...EMPTY_SPIN, frameCount: frames });
+        } catch {
+          // Offline: the queue raises frameCount as each frame syncs
+          // (ensureSpinFrameCount) — nothing is lost, no need to block here.
+        }
         haptics.success();
-        if (failed > 0) {
-          toast.show(`360° saved · ${failed} frame${failed === 1 ? '' : 's'} failed to upload`, 'error');
+        if (stashFailures.current > 0) {
+          toast.show(
+            `${stashFailures.current} frame${stashFailures.current === 1 ? '' : 's'} could not be saved — check free storage`,
+            'error'
+          );
         } else {
           toast.show(`360° captured (${frames} frames)`, 'success');
         }
         router.replace({ pathname: '/spin/[id]', params: { id } });
-      } catch (e) {
-        toast.show(e instanceof Error ? e.message : 'Could not save 360', 'error');
       } finally {
         setBusy(false);
       }
@@ -88,7 +104,7 @@ export default function SpinCaptureScreen() {
       if (photo?.uri) {
         const frameIndex = count;
         const next = count + 1;
-        queueUpload(frameIndex, photo.uri); // upload in the background, don't block
+        queueFrame(frameIndex, photo.uri, photo.width, photo.height); // stash + queue in the background, don't block
         setCount(next);
         haptics.medium();
         if (next >= TARGET) {
@@ -100,7 +116,7 @@ export default function SpinCaptureScreen() {
     } finally {
       setBusy(false);
     }
-  }, [busy, count, queueUpload, finish, toast]);
+  }, [busy, count, queueFrame, finish, toast]);
 
   if (!permission) {
     return (
