@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,6 +8,7 @@ import { Button } from '@/components/Button';
 import { EmptyState } from '@/components/EmptyState';
 import { Icon } from '@/components/Icon';
 import { IconButton } from '@/components/IconButton';
+import { NotFound } from '@/components/NotFound';
 import { PressableScale } from '@/components/PressableScale';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { Text } from '@/components/Text';
@@ -29,14 +30,15 @@ import { mapWithConcurrency } from '@/lib/concurrency';
 import { haptics } from '@/lib/haptics';
 import { uploadFileUri, type UploadTask } from '@/lib/uploadQueue';
 import { useDebouncedAutosave } from '@/lib/useDebouncedAutosave';
+import { useRouteId } from '@/lib/useRouteId';
 import { colors, radius, spacing } from '@/theme';
 
 export default function SpinScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const id = useRouteId() ?? '';
   const router = useRouter();
   const toast = useToast();
   const qc = useQueryClient();
-  const { data: project } = useProject(id);
+  const { data: project, isError: projectError, refetch: refetchProject } = useProject(id || undefined);
 
   const [hydrated, setHydrated] = useState(false);
   const [frameCount, setFrameCount] = useState(0);
@@ -195,6 +197,16 @@ export default function SpinScreen() {
       setCutProgress(null);
     }
   }, [frameCount, pendingCount, id, qc, toast]);
+
+  if (!id || projectError) {
+    return (
+      <NotFound
+        title="360° unavailable"
+        subtitle={projectError ? "This project couldn't be loaded." : 'This project no longer exists.'}
+        onRetry={projectError ? () => void refetchProject() : undefined}
+      />
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>

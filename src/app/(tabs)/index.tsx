@@ -35,7 +35,14 @@ export default function ProjectsScreen() {
       haptics.warning();
       Alert.alert('Delete project', `Delete "${project.name}"? This cannot be undone.`, [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => del.mutate(project.id) },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () =>
+            del.mutate(project.id, {
+              onError: () => Alert.alert('Delete failed', 'Could not delete the project — please try again.'),
+            }),
+        },
       ]);
     },
     [del]

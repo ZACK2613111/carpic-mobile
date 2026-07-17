@@ -10,7 +10,15 @@ export const queryClient = new QueryClient({
     queries: {
       staleTime: 30_000,
       gcTime: 1000 * 60 * 60 * 24, // keep for a day so the persisted cache survives
-      retry: 2,
+      // Don't burn retries (or the user's data) hammering a dead network — a
+      // 404/403 won't fix itself, and onlineManager (NetInfo) refetches on
+      // reconnect anyway. Capped exponential backoff for the transient cases.
+      retry: (failureCount, error) => {
+        const status = (error as { status?: number })?.status;
+        if (status && status >= 400 && status < 500) return false;
+        return failureCount < 2;
+      },
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 15_000),
       refetchOnWindowFocus: false,
     },
     mutations: {

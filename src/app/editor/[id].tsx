@@ -1,5 +1,5 @@
 import { useCanvasRef } from '@shopify/react-native-skia';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useCallback } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
@@ -10,6 +10,7 @@ import { Button } from '@/components/Button';
 import { Checkerboard } from '@/components/Checkerboard';
 import { Icon } from '@/components/Icon';
 import { IconButton } from '@/components/IconButton';
+import { NotFound } from '@/components/NotFound';
 import { PressableScale } from '@/components/PressableScale';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { Text } from '@/components/Text';
@@ -35,17 +36,18 @@ import { useShot, useShotSignedUrl, useUpdateShot } from '@/features/shots/useSh
 import { haptics } from '@/lib/haptics';
 import { useCoachMarks } from '@/lib/useCoachMarks';
 import { useDebouncedAutosave } from '@/lib/useDebouncedAutosave';
+import { useRouteId } from '@/lib/useRouteId';
 import { colors, radius, spacing } from '@/theme';
 
 const COACH_KEY = 'editor-coach-v1';
 
 export default function EditorScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const id = useRouteId();
   const router = useRouter();
   const canvasRef = useCanvasRef();
   const toast = useToast();
 
-  const { data: shot } = useShot(id);
+  const { data: shot, isLoading: shotLoading, isError: shotError, refetch: refetchShot } = useShot(id ?? undefined);
   const updateShot = useUpdateShot();
   const { remove, status: bgStatus } = useBackgroundRemoval();
 
@@ -131,7 +133,7 @@ export default function EditorScreen() {
       if (shot) {
         try {
           const path = await uploadShotAsset(shot.project_id, shot.slot, 'cutout', cut, 'image/png');
-          await updateShot.mutateAsync({ id, patch: { cutout_path: path } });
+          await updateShot.mutateAsync({ id: shot.id, patch: { cutout_path: path } });
         } catch (uploadErr) {
           console.warn('[editor] cutout upload failed', uploadErr);
         }
@@ -145,20 +147,20 @@ export default function EditorScreen() {
         Alert.alert('Cut out failed', msg);
       }
     }
-  }, [id, remove, setCutout, toast, updateShot, shot]);
+  }, [remove, setCutout, toast, updateShot, shot]);
 
   const onEngineRecorded = useCallback(
     async (uri: string) => {
       if (!shot) return;
       try {
         const path = await uploadShotAsset(shot.project_id, shot.slot, 'audio', uri, 'audio/m4a');
-        await updateShot.mutateAsync({ id, patch: { audio_path: path } });
+        await updateShot.mutateAsync({ id: shot.id, patch: { audio_path: path } });
         toast.show('Engine sound saved', 'success');
       } catch (e) {
         toast.show(e instanceof Error ? e.message : 'Could not save audio', 'error');
       }
     },
-    [shot, id, updateShot, toast]
+    [shot, updateShot, toast]
   );
 
   const onPlateToggle = useCallback(() => {
@@ -174,6 +176,18 @@ export default function EditorScreen() {
   }, [setPlate, selectPlate]);
 
   const saving = saveStatus === 'pending' || saveStatus === 'saving';
+
+  // Bad/stale deep link or a deleted shot — recoverable dead-end beats an
+  // infinite spinner. (All hooks above have already run, so this is safe.)
+  if (!id || shotError || (!shotLoading && !shot)) {
+    return (
+      <NotFound
+        title="Shot unavailable"
+        subtitle={shotError ? "This shot couldn't be loaded." : 'This shot no longer exists.'}
+        onRetry={shotError ? () => void refetchShot() : undefined}
+      />
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>

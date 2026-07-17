@@ -8,7 +8,7 @@ import {
   signedUrl,
   updateProject,
 } from './projects.api';
-import type { ProjectPatch } from './types';
+import type { Project, ProjectPatch } from './types';
 
 export const projectKeys = {
   all: ['projects'] as const,
@@ -60,6 +60,16 @@ export function useDeleteProject() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteProject(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: projectKeys.all }),
+    // Optimistic: drop the card immediately, roll back if the delete fails.
+    onMutate: async (id: string) => {
+      await qc.cancelQueries({ queryKey: projectKeys.all });
+      const previous = qc.getQueryData<Project[]>(projectKeys.all);
+      qc.setQueryData<Project[]>(projectKeys.all, (list) => (list ?? []).filter((p) => p.id !== id));
+      return { previous };
+    },
+    onError: (_err, _id, ctx) => {
+      if (ctx?.previous) qc.setQueryData(projectKeys.all, ctx.previous);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: projectKeys.all }),
   });
 }

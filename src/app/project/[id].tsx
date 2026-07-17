@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, Share, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
 import { Icon } from '@/components/Icon';
 import { IconButton } from '@/components/IconButton';
+import { NotFound } from '@/components/NotFound';
 import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
@@ -20,14 +21,15 @@ import { usePendingUploads } from '@/features/uploads/usePendingUploads';
 import type { ShotUploadPayload } from '@/features/uploads/uploads';
 import { useProject } from '@/features/projects/useProjects';
 import { uploadFileUri, type UploadTask } from '@/lib/uploadQueue';
+import { useRouteId } from '@/lib/useRouteId';
 import { colors, radius, spacing } from '@/theme';
 
 export default function ProjectDashboard() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const id = useRouteId();
   const router = useRouter();
   const toast = useToast();
-  const { data: project } = useProject(id);
-  const { data: shots, isLoading } = useShots(id);
+  const { data: project, isError: projectError, refetch: refetchProject } = useProject(id ?? undefined);
+  const { data: shots, isLoading } = useShots(id ?? undefined);
   const qc = useQueryClient();
 
   // Photos can arrive from OUTSIDE the app (remote capture link) — refetch the
@@ -49,7 +51,7 @@ export default function ProjectDashboard() {
 
   // Photos captured but not yet synced (offline / upload in flight) — shown on
   // their tile from the local outbox file until the real row lands.
-  const pendingUploads = usePendingUploads(id);
+  const pendingUploads = usePendingUploads(id ?? undefined);
   const pendingBySlot = useMemo(() => {
     const map: Record<string, UploadTask> = {};
     pendingUploads.forEach((t) => {
@@ -68,7 +70,7 @@ export default function ProjectDashboard() {
   // "Request photos": share a tokenized browser link so the vehicle owner can
   // shoot the guided list themselves — no app install on their side.
   const doRequestPhotos = useCallback(async () => {
-    if (requesting) return;
+    if (requesting || !id) return;
     setRequesting(true);
     try {
       const link = await getOrCreateCaptureLink(id);
@@ -109,6 +111,16 @@ export default function ProjectDashboard() {
       router.push({ pathname: '/capture/[id]', params: { id, start: slot.id } });
     }
   };
+
+  if (!id || projectError) {
+    return (
+      <NotFound
+        title="Project unavailable"
+        subtitle={projectError ? "This project couldn't be loaded." : 'This project no longer exists.'}
+        onRetry={projectError ? () => void refetchProject() : undefined}
+      />
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
