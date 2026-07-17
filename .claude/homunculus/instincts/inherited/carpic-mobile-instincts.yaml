@@ -1,0 +1,613 @@
+# Instincts generated from https://github.com/ZACK2613111/carpic-mobile
+# Generated: 2026-07-17T15:55:37.516Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: carpic-mobile-commit-conventional
+trigger: "when writing a commit message"
+confidence: 0.85
+domain: git
+source: repo-analysis
+source_repo: https://github.com/ZACK2613111/carpic-mobile
+---
+
+# Carpic Mobile Commit Conventional
+
+## Action
+
+Use conventional commit format with prefixes: feat, perf, chore, refactor, fix
+
+## Evidence
+
+- 12 commits analyzed
+- Detected conventional commit pattern
+- Examples: perf: parallelize background removal, uploads and export off-thread, feat: auth hardening, iOS export-compliance flag, and unit test suite
+
+---
+id: carpic-mobile-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/ZACK2613111/carpic-mobile
+---
+
+# Carpic Mobile Commit Length
+
+## Action
+
+Write moderate-length commit messages (~73 characters)
+
+## Evidence
+
+- Average commit message length: 73 chars
+- Based on 12 commits
+
+---
+id: carpic-mobile-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/ZACK2613111/carpic-mobile
+---
+
+# Carpic Mobile Naming Files
+
+## Action
+
+Use camelCase naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: camelCase
+
+---
+id: carpic-mobile-import-alias
+trigger: "when importing modules"
+confidence: 0.85
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/ZACK2613111/carpic-mobile
+---
+
+# Carpic Mobile Import Alias
+
+## Action
+
+Use path aliases (@/, ~/) instead of relative imports
+
+## Evidence
+
+- Import analysis shows alias pattern
+- Example: import { x } from '@/lib/x'
+
+---
+id: carpic-mobile-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/ZACK2613111/carpic-mobile
+---
+
+# Carpic Mobile Export Style
+
+## Action
+
+Prefer default exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: default
+
+---
+id: carpic-mobile-arch-feature-based
+trigger: "when adding a new feature"
+confidence: 0.85
+domain: architecture
+source: repo-analysis
+source_repo: https://github.com/ZACK2613111/carpic-mobile
+---
+
+# Carpic Mobile Arch Feature Based
+
+## Action
+
+Create a new folder in src/features/ with all related code colocated
+
+## Evidence
+
+- Feature-based module organization detected
+- Structure: src/features/[feature-name]/
+
+---
+id: carpic-mobile-test-framework
+trigger: "when writing tests"
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/ZACK2613111/carpic-mobile
+---
+
+# Carpic Mobile Test Framework
+
+## Action
+
+Use jest as the test framework
+
+## Evidence
+
+- Test framework detected: jest
+- File pattern: *.test.ts
+
+---
+id: carpic-mobile-test-naming
+trigger: "when creating a test file"
+confidence: 0.85
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/ZACK2613111/carpic-mobile
+---
+
+# Carpic Mobile Test Naming
+
+## Action
+
+Name test files using the pattern: *.test.ts
+
+## Evidence
+
+- File pattern: *.test.ts
+- Consistent across test files
+
+---
+id: carpic-mobile-test-mocking
+trigger: "when mocking dependencies in tests"
+confidence: 0.75
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/ZACK2613111/carpic-mobile
+---
+
+# Carpic Mobile Test Mocking
+
+## Action
+
+Use jest.mock for mocking
+
+## Evidence
+
+- Mocking pattern detected: jest.mock
+- Consistent across test files
+
+---
+id: carpic-mobile-workflow-database-migration
+trigger: "when modifying the database schema or adding tables"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/ZACK2613111/carpic-mobile
+---
+
+# Carpic Mobile Workflow Database Migration
+
+## Action
+
+Follow the database-migration workflow:
+1. Create migration file
+2. Update schema definitions
+3. Generate/update types
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~8x per month
+- Files: **/schema.*, **/types.ts
+
+---
+id: carpic-mobile-workflow-feature-development
+trigger: "when implementing a new feature"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/ZACK2613111/carpic-mobile
+---
+
+# Carpic Mobile Workflow Feature Development
+
+## Action
+
+Follow the feature-development workflow:
+1. Add feature implementation
+2. Add tests for feature
+3. Update documentation
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~23x per month
+- Files: src/app/(auth)/*, src/app/(tabs)/*, src/features/background-removal/__tests__/*
+
+---
+id: carpic-mobile-workflow-add-new-feature-with-pure-logic-and-tests
+trigger: "when doing add new feature with pure logic and tests"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/ZACK2613111/carpic-mobile
+---
+
+# Carpic Mobile Workflow Add New Feature With Pure Logic And Tests
+
+## Action
+
+Follow the add-new-feature-with-pure-logic-and-tests workflow:
+1. Create or update a pure logic module in src/features/[feature]/[feature].ts or src/lib/[feature].ts
+2. Write unit tests in src/features/[feature]/__tests__/[feature].test.ts or src/lib/__tests__/[feature].test.ts
+3. Integrate the logic into the relevant app screen (e.g., src/app/project/[id].tsx, src/app/editor/[id].tsx)
+4. Update the web viewer if needed (web/viewer.html)
+5. Update publish logic if needed (src/features/publish/publish.ts)
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: src/features/*/[feature].ts, src/features/*/__tests__/[feature].test.ts, src/app/project/[id].tsx
+
+---
+id: carpic-mobile-workflow-database-schema-change-with-api-and-docs
+trigger: "when doing database schema change with api and docs"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/ZACK2613111/carpic-mobile
+---
+
+# Carpic Mobile Workflow Database Schema Change With Api And Docs
+
+## Action
+
+Follow the database-schema-change-with-api-and-docs workflow:
+1. Edit or create a new supabase/schema_vX.sql file
+2. Update or create API/data helpers in src/features/[feature]/*.api.ts
+3. Update types in src/features/[feature]/types.ts if needed
+4. Update docs (docs/GETTING_STARTED.md, docs/PLAN_10_JOURS.md, README.md) to reflect schema changes
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: supabase/schema_v*.sql, src/features/*/*.api.ts, src/features/*/types.ts
+
+---
+id: carpic-mobile-workflow-feature-development-with-ui-integration-and-publish
+trigger: "when doing feature development with ui integration and publish"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/ZACK2613111/carpic-mobile
+---
+
+# Carpic Mobile Workflow Feature Development With Ui Integration And Publish
+
+## Action
+
+Follow the feature-development-with-ui-integration-and-publish workflow:
+1. Implement or update UI components in src/app/*/[id].tsx and src/features/[feature]/*.tsx
+2. Add or update logic modules in src/features/[feature]/*.ts
+3. Add or update tests in src/features/[feature]/__tests__/*.test.ts
+4. Update publish logic in src/features/publish/publish.ts
+5. Update the web viewer (web/viewer.html) if the feature is visible in shared links
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: src/app/*/[id].tsx, src/features/*/*.tsx, src/features/*/*.ts
+
+---
+id: carpic-mobile-workflow-add-or-harden-offline-upload-queue
+trigger: "when doing add or harden offline upload queue"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/ZACK2613111/carpic-mobile
+---
+
+# Carpic Mobile Workflow Add Or Harden Offline Upload Queue
+
+## Action
+
+Follow the add-or-harden-offline-upload-queue workflow:
+1. Implement or update upload queue logic in src/lib/uploadQueue/* and src/features/uploads/*
+2. Write or update tests in src/lib/__tests__/uploadQueue.test.ts
+3. Integrate with capture or editor flows in src/app/capture/*/[id].tsx or src/app/editor/[id].tsx
+4. Update UI to reflect pending uploads or upload status
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: src/lib/uploadQueue/*, src/features/uploads/*, src/lib/__tests__/uploadQueue.test.ts
+
+---
+id: carpic-mobile-instinct-file-naming
+trigger: "When creating a new file (component, module, or test)"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: ZACK2613111/carpic-mobile
+---
+
+# Carpic Mobile Instinct File Naming
+
+## Action
+
+Name the file using camelCase (e.g., myFeature.ts, uploadQueue.test.ts)
+
+## Evidence
+
+- Pattern in namingConventions.files: camelCase
+- Examples in src/features/background-removal/__tests__/backgroundRemoval.test.ts
+
+---
+id: carpic-mobile-instinct-function-naming
+trigger: "When defining a new function"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: ZACK2613111/carpic-mobile
+---
+
+# Carpic Mobile Instinct Function Naming
+
+## Action
+
+Name the function using camelCase (e.g., handleUpload, fetchData)
+
+## Evidence
+
+- Pattern in namingConventions.functions: camelCase
+
+---
+id: carpic-mobile-instinct-class-naming
+trigger: "When defining a new class"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: ZACK2613111/carpic-mobile
+---
+
+# Carpic Mobile Instinct Class Naming
+
+## Action
+
+Name the class using PascalCase (e.g., UploadQueue, AuthManager)
+
+## Evidence
+
+- Pattern in namingConventions.classes: PascalCase
+
+---
+id: carpic-mobile-instinct-constant-naming
+trigger: "When defining a constant"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: ZACK2613111/carpic-mobile
+---
+
+# Carpic Mobile Instinct Constant Naming
+
+## Action
+
+Name the constant using SCREAMING_SNAKE_CASE (e.g., MAX_UPLOAD_SIZE)
+
+## Evidence
+
+- Pattern in namingConventions.constants: SCREAMING_SNAKE_CASE
+
+---
+id: carpic-mobile-instinct-import-style
+trigger: "When importing modules"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: ZACK2613111/carpic-mobile
+---
+
+# Carpic Mobile Instinct Import Style
+
+## Action
+
+Use alias import style as configured in tsconfig.json
+
+## Evidence
+
+- Pattern in importStyle: alias
+- Presence of tsconfig.json with path aliases
+
+---
+id: carpic-mobile-instinct-export-style
+trigger: "When exporting modules or components"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: ZACK2613111/carpic-mobile
+---
+
+# Carpic Mobile Instinct Export Style
+
+## Action
+
+Use default export style
+
+## Evidence
+
+- Pattern in exportStyle: default
+
+---
+id: carpic-mobile-instinct-test-location
+trigger: "When adding tests for a feature or module"
+confidence: 0.85
+domain: testing
+source: repo-analysis
+source_repo: ZACK2613111/carpic-mobile
+---
+
+# Carpic Mobile Instinct Test Location
+
+## Action
+
+Place test files alongside the feature/module in __tests__ folders or as *.test.ts files
+
+## Evidence
+
+- Pattern in testing.filePattern: *.test.ts
+- Examples in src/features/background-removal/__tests__/
+
+---
+id: carpic-mobile-instinct-test-framework
+trigger: "When writing tests"
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: ZACK2613111/carpic-mobile
+---
+
+# Carpic Mobile Instinct Test Framework
+
+## Action
+
+Use Jest as the testing framework
+
+## Evidence
+
+- Pattern in testing.framework: jest
+- Presence of jest.config.js
+
+---
+id: carpic-mobile-instinct-test-type
+trigger: "When writing tests for new logic or features"
+confidence: 0.85
+domain: testing
+source: repo-analysis
+source_repo: ZACK2613111/carpic-mobile
+---
+
+# Carpic Mobile Instinct Test Type
+
+## Action
+
+Write unit tests using jest.mock for dependencies if needed
+
+## Evidence
+
+- Pattern in testing.testTypes: unit
+- Pattern in testing.mockingStyle: jest.mock
+
+---
+id: carpic-mobile-instinct-commit-format
+trigger: "When making a git commit"
+confidence: 0.9
+domain: git
+source: repo-analysis
+source_repo: ZACK2613111/carpic-mobile
+---
+
+# Carpic Mobile Instinct Commit Format
+
+## Action
+
+Use conventional commit format with prefixes: feat, perf, chore, refactor, fix; include optional scope in parentheses and a concise message (~70-80 chars)
+
+## Evidence
+
+- Pattern in commits.type: conventional
+- Examples: 'feat: auth hardening, iOS export-compliance flag, and unit test suite'
+
+---
+id: carpic-mobile-instinct-new-pure-feature-workflow
+trigger: "When adding a new pure logic feature that is testable and visible in the app or viewer"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: ZACK2613111/carpic-mobile
+---
+
+# Carpic Mobile Instinct New Pure Feature Workflow
+
+## Action
+
+Create or update logic in src/features/[feature]/[feature].ts or src/lib/[feature].ts, write unit tests, integrate into app screens, update web viewer and publish logic if needed
+
+## Evidence
+
+- Workflow: add-new-feature-with-pure-logic-and-tests
+- Example files: src/features/*/[feature].ts, src/features/*/__tests__/[feature].test.ts
+
+---
+id: carpic-mobile-instinct-database-schema-change-workflow
+trigger: "When adding or modifying a database table, column, or policy"
+confidence: 0.85
+domain: workflow
+source: repo-analysis
+source_repo: ZACK2613111/carpic-mobile
+---
+
+# Carpic Mobile Instinct Database Schema Change Workflow
+
+## Action
+
+Edit/create supabase/schema_vX.sql, update API/data helpers, update types, update docs
+
+## Evidence
+
+- Workflow: database-schema-change-with-api-and-docs
+- Example files: supabase/schema_v*.sql, src/features/*/*.api.ts, docs/*.md
+
+---
+id: carpic-mobile-instinct-feature-development-ui-publish-workflow
+trigger: "When adding a new user-facing feature with UI, logic, and publishing/export support"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: ZACK2613111/carpic-mobile
+---
+
+# Carpic Mobile Instinct Feature Development Ui Publish Workflow
+
+## Action
+
+Implement/update UI components, logic modules, tests, publish logic, and web viewer as needed
+
+## Evidence
+
+- Workflow: feature-development-with-ui-integration-and-publish
+- Example files: src/app/*/[id].tsx, src/features/*/*.tsx, src/features/publish/publish.ts
+
+---
+id: carpic-mobile-instinct-offline-upload-queue-workflow
+trigger: "When making uploads more resilient to offline or flaky network conditions"
+confidence: 0.85
+domain: workflow
+source: repo-analysis
+source_repo: ZACK2613111/carpic-mobile
+---
+
+# Carpic Mobile Instinct Offline Upload Queue Workflow
+
+## Action
+
+Implement/update upload queue logic, write/update tests, integrate with capture/editor flows, update UI for upload status
+
+## Evidence
+
+- Workflow: add-or-harden-offline-upload-queue
+- Example files: src/lib/uploadQueue/*, src/lib/__tests__/uploadQueue.test.ts
+
