@@ -70,6 +70,8 @@ export type Project = {
   thumb_path: string | null;
   status?: ProjectStatus;
   spin?: SpinData;
+  /** Raw 17-char VIN; make/year/region are decoded on-device from it. */
+  vin?: string | null;
   published_url?: string | null;
   published_at?: string | null;
   created_at: string;
@@ -89,6 +91,7 @@ export type ProjectPatch = Partial<
     | 'thumb_path'
     | 'status'
     | 'spin'
+    | 'vin'
     | 'published_url'
     | 'published_at'
   >

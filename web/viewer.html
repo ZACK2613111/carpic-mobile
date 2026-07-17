@@ -13,7 +13,8 @@
       html, body { margin: 0; background: var(--bg); color: var(--text);
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
       .wrap { max-width: 780px; margin: 0 auto; padding: 16px; }
-      .title { font-size: 24px; font-weight: 800; margin: 8px 4px 16px; }
+      .title { font-size: 24px; font-weight: 800; margin: 8px 4px 4px; }
+      .vehicle { color: var(--muted); font-size: 14px; font-weight: 600; margin: 0 4px 16px; }
       .loading, .err { text-align: center; color: var(--muted); padding: 64px 16px; }
       .section-label { color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .5px;
         text-transform: uppercase; margin: 22px 4px 10px; }
@@ -236,6 +237,7 @@
         var app = document.getElementById('app');
         app.innerHTML = '';
         app.appendChild(el('div', 'title', m.name || 'Vehicle'));
+        if (m.vehicle) app.appendChild(el('div', 'vehicle', m.vehicle));
 
         if (m.spin && m.spin.frameCount > 0 && m.spin.frames && m.spin.frames.length) {
           app.appendChild(build360(m.spin));

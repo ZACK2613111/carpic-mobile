@@ -1,16 +1,18 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, Share, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
+import { Chip } from '@/components/Chip';
 import { Icon } from '@/components/Icon';
 import { IconButton } from '@/components/IconButton';
 import { NotFound } from '@/components/NotFound';
 import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
+import { TextField } from '@/components/TextField';
 import { useToast } from '@/components/Toast';
 import { captureLinkUrl, getOrCreateCaptureLink } from '@/features/capture-links/captureLinks.api';
 import { GROUP_LABELS, GROUP_ORDER, SHOT_TEMPLATE, type ShotSlot } from '@/features/capture/shotTemplate';
@@ -19,7 +21,8 @@ import type { Shot } from '@/features/shots/types';
 import { shotKeys, useShots, useShotSignedUrl } from '@/features/shots/useShots';
 import { usePendingUploads } from '@/features/uploads/usePendingUploads';
 import type { ShotUploadPayload } from '@/features/uploads/uploads';
-import { useProject } from '@/features/projects/useProjects';
+import { useProject, useUpdateProject } from '@/features/projects/useProjects';
+import { decodeVin, normalizeVin, vinSummary } from '@/features/vehicle/vin';
 import { uploadFileUri, type UploadTask } from '@/lib/uploadQueue';
 import { useRouteId } from '@/lib/useRouteId';
 import { colors, radius, spacing } from '@/theme';
@@ -162,6 +165,9 @@ export default function ProjectDashboard() {
             ) : null}
           </View>
 
+          {/* vehicle (VIN) */}
+          <VinCard projectId={id} initialVin={project?.vin ?? ''} />
+
           {/* primary actions */}
           <Button
             title="Guided capture"
@@ -227,6 +233,59 @@ export default function ProjectDashboard() {
         </View>
       ) : null}
     </SafeAreaView>
+  );
+}
+
+function VinCard({ projectId, initialVin }: { projectId: string; initialVin: string }) {
+  const updateProject = useUpdateProject();
+  const [text, setText] = useState(initialVin);
+  // Re-seed if the project loads/refetches with a different stored VIN.
+  const seeded = useRef(initialVin);
+  if (seeded.current !== initialVin && text === seeded.current) {
+    seeded.current = initialVin;
+    setText(initialVin);
+  }
+
+  const info = useMemo(() => (text.trim() ? decodeVin(text) : null), [text]);
+  const summary = info?.valid ? vinSummary(info) : '';
+
+  const commit = useCallback(() => {
+    const normalized = normalizeVin(text);
+    if ((normalized || null) === (initialVin || null)) return;
+    updateProject.mutate({ id: projectId, patch: { vin: normalized || null } });
+  }, [text, initialVin, projectId, updateProject]);
+
+  return (
+    <View style={styles.vinCard}>
+      <View style={styles.vinHeader}>
+        <Icon name="car" size={18} color={colors.primary} />
+        <Text variant="bodyStrong">Vehicle</Text>
+      </View>
+      <TextField
+        value={text}
+        onChangeText={setText}
+        onBlur={commit}
+        placeholder="VIN (17 characters, on the windshield)"
+        autoCapitalize="characters"
+        autoCorrect={false}
+        maxLength={20}
+      />
+      {info && !info.valid && text.trim().length > 0 ? (
+        <Text variant="caption" faint>
+          Keep typing — a VIN is 17 characters.
+        </Text>
+      ) : summary ? (
+        <View style={styles.vinChips}>
+          {info?.year ? <Chip label={String(info.year)} filled={false} /> : null}
+          {info?.make ? <Chip label={info.make} filled={false} /> : null}
+          {info?.region ? <Chip label={info.region} filled={false} color={colors.textMuted} /> : null}
+        </View>
+      ) : (
+        <Text variant="caption" faint>
+          Adds the year, make and origin automatically — no internet needed.
+        </Text>
+      )}
+    </View>
   );
 }
 
@@ -356,6 +415,16 @@ const styles = StyleSheet.create({
   },
   badgePending: { backgroundColor: colors.primary },
   pendingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  vinCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+    gap: spacing.sm,
+  },
+  vinHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  vinChips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   publishOverlay: {
     position: 'absolute',
     top: 0,

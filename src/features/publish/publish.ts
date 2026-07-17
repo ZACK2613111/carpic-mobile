@@ -2,6 +2,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 
 import { getBrand, watermarkVisible } from '@/features/branding/brand';
 import { getSlot } from '@/features/capture/shotTemplate';
+import { decodeVin, vinSummary } from '@/features/vehicle/vin';
 import { updateProject } from '@/features/projects/projects.api';
 import type { Project } from '@/features/projects/types';
 import type { Shot } from '@/features/shots/types';
@@ -95,9 +96,11 @@ export async function publishProject(project: Project, shots: Shot[], onStep?: P
   onStep?.('Publishing');
   const brand = getBrand();
   const watermark = watermarkVisible(brand) ? { text: brand.text.trim(), position: brand.position } : null;
+  const vehicle = project.vin ? vinSummary(decodeVin(project.vin)) || null : null;
   const manifest = {
     name: project.name,
     generatedAt: new Date().toISOString(),
+    vehicle,
     shots: manifestShots,
     spin,
     watermark,
