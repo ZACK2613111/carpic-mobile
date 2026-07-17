@@ -2,16 +2,19 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Alert, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Chip } from '@/components/Chip';
 import { EmptyState } from '@/components/EmptyState';
 import { Icon } from '@/components/Icon';
 import { PressableScale } from '@/components/PressableScale';
 import { Skeleton } from '@/components/Skeleton';
 import { Text } from '@/components/Text';
+import { TextField } from '@/components/TextField';
 import { getProject } from '@/features/projects/projects.api';
+import { filterAndSortProjects, isPublished, type SortMode } from '@/features/projects/projectListView';
 import type { Project } from '@/features/projects/types';
 import { projectKeys, useDeleteProject, useProjects, useSignedUrl } from '@/features/projects/useProjects';
 import { haptics } from '@/lib/haptics';
@@ -22,6 +25,12 @@ export default function ProjectsScreen() {
   const qc = useQueryClient();
   const { data: projects, isLoading, isError, error, refetch, isRefetching } = useProjects();
   const del = useDeleteProject();
+
+  const [query, setQuery] = useState('');
+  const [sort, setSort] = useState<SortMode>('recent');
+  const visible = useMemo(() => filterAndSortProjects(projects ?? [], { query, sort }), [projects, query, sort]);
+  // Only surface the search/sort controls once the grid is big enough to need them.
+  const showControls = (projects?.length ?? 0) >= 5;
 
   const prefetch = useCallback(
     (id: string) => {
@@ -71,24 +80,56 @@ export default function ProjectsScreen() {
         </View>
       ) : (
         <FlatList
-          data={projects ?? []}
+          data={visible}
           keyExtractor={(p) => p.id}
           numColumns={2}
           contentContainerStyle={styles.list}
           columnWrapperStyle={styles.row}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
           }
+          ListHeaderComponent={
+            showControls ? (
+              <View style={styles.controls}>
+                <View style={styles.searchWrap}>
+                  <TextField
+                    leftIcon="crosshair"
+                    value={query}
+                    onChangeText={setQuery}
+                    placeholder="Search name, VIN or make…"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    returnKeyType="search"
+                  />
+                </View>
+                <PressableScale
+                  style={styles.sortBtn}
+                  onPress={() => setSort((s) => (s === 'recent' ? 'name' : 'recent'))}
+                  haptic="selection"
+                >
+                  <Icon name="sliders" size={16} color={colors.textMuted} />
+                  <Text variant="label" muted>
+                    {sort === 'recent' ? 'Recent' : 'Name'}
+                  </Text>
+                </PressableScale>
+              </View>
+            ) : null
+          }
           ListEmptyComponent={
             <View style={styles.center}>
-              <EmptyState
-                icon="car"
-                title="No projects yet"
-                subtitle="Turn a car photo into a studio-quality shot in seconds."
-                actionLabel="New project"
-                onAction={() => router.push('/new')}
-              />
+              {query ? (
+                <EmptyState icon="crosshair" title="No matches" subtitle={`Nothing matches “${query}”.`} />
+              ) : (
+                <EmptyState
+                  icon="car"
+                  title="No projects yet"
+                  subtitle="Turn a car photo into a studio-quality shot in seconds."
+                  actionLabel="New project"
+                  onAction={() => router.push('/new')}
+                />
+              )}
             </View>
           }
           renderItem={({ item }) => (
@@ -144,6 +185,11 @@ function ProjectCard({
         ) : (
           <Icon name="car" size={40} color={colors.textFaint} />
         )}
+        {isPublished(project) ? (
+          <View style={styles.chip}>
+            <Chip label="Published" color={colors.success} />
+          </View>
+        ) : null}
       </View>
       <Text variant="bodyStrong" numberOfLines={1}>
         {project.name}
@@ -193,6 +239,19 @@ const styles = StyleSheet.create({
   },
   thumbImg: { width: '100%', height: '100%' },
   chip: { position: 'absolute', top: spacing.sm, left: spacing.sm },
+  controls: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
+  searchWrap: { flex: 1 },
+  sortBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
   fabWrap: { position: 'absolute', right: spacing.lg, bottom: spacing.xl },
   fab: { width: 62, height: 62, borderRadius: radius.xl, alignItems: 'center', justifyContent: 'center' },
 });
