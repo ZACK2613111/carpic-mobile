@@ -71,17 +71,22 @@ Supabase is the backend: **auth** (accounts), **Postgres** (your data), and **St
    - **Database password:** generate one and save it somewhere (you won't need it in the app).
    - **Region:** pick the one closest to you (e.g. *West EU (Paris)*).
    - Click **Create new project** and wait ~2 min for it to provision.
-3. In the left sidebar open **SQL Editor** → **+ New query**. Run **both** files, in order:
+3. In the left sidebar open **SQL Editor** → **+ New query**. Run **all three** files, in order:
    - Open [`supabase/schema.sql`](../supabase/schema.sql) from this repo, copy all of it, paste, click **Run**.
    - Open [`supabase/schema_v2.sql`](../supabase/schema_v2.sql), copy all, paste into a new query, click **Run**.
+   - Open [`supabase/schema_v3.sql`](../supabase/schema_v3.sql), copy all, paste into a new query, click **Run**.
 
    Together these create the tables (`profiles`, `projects`, `shots`, `custom_backgrounds`), the private
-   `projects` storage bucket, and the public `published` bucket for shareable links — all with
+   `projects` storage bucket, and the public `published` + `viewer` buckets for shareable links — all with
    Row-Level Security so each user only sees their own data.
-4. **(Recommended for testing)** Turn off email confirmation so you can sign in immediately:
+4. **One-time viewer upload** (needed for the Publish feature): in the sidebar open
+   **Storage** → **viewer** → **Upload file**, and upload [`web/viewer.html`](../web/viewer.html) from
+   this repo to the bucket **root**. The app deliberately can't upload it for you — clients are only
+   allowed to write JSON manifests, so nobody can host arbitrary HTML on your Supabase domain.
+5. **(Recommended for testing)** Turn off email confirmation so you can sign in immediately:
    **Authentication → Sign In / Providers → Email** → toggle **Confirm email** *off* → Save.
    (Turn it back on before going live.)
-5. Get your two keys: **Project Settings → API**
+6. Get your two keys: **Project Settings → API**
    - copy the **Project URL** (looks like `https://abcd1234.supabase.co`)
    - copy the **publishable key** (a long string; in some dashboards it's labelled "anon/public").
 
@@ -204,7 +209,8 @@ npx expo-doctor                     # verify config & native deps
 | Android cut-out does nothing on a brand-new phone with no internet | ML Kit downloads its model once via Play Services — connect to the internet once, then it's offline. |
 | Phone can't connect to Metro | Same Wi-Fi, or use `npx expo start --dev-client --tunnel`. |
 | Can't sign in / "email not confirmed" | Turn off **Confirm email** in Supabase (step 2.4), or confirm via the email. |
-| Publish link shows "Could not load" | Make sure `schema_v2.sql` ran (it creates the public `published` bucket). |
+| Publish link shows "Could not load" | Make sure `schema_v2.sql` **and** `schema_v3.sql` ran (they create the public `published`/`viewer` buckets). |
+| Publish fails with "Web viewer not installed" | Upload `web/viewer.html` to the root of the `viewer` bucket (one-time step — see section 2). |
 | Build fails on EAS | Run `npx expo-doctor` and `eas build --profile development -p android` again; check the build logs link EAS prints. |
 
 ---

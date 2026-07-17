@@ -71,11 +71,15 @@ Node ≥ 20.19.4 is required (Expo SDK 57).
 ## 2. Configure Supabase
 
 1. Create a free project at [supabase.com](https://supabase.com).
-2. Open the **SQL Editor** and run **both** files in order:
+2. Open the **SQL Editor** and run **all three** files in order:
    - [`supabase/schema.sql`](supabase/schema.sql) — `profiles`, `projects`, `custom_backgrounds` +
      the private `projects` Storage bucket, all with RLS.
    - [`supabase/schema_v2.sql`](supabase/schema_v2.sql) — the `shots` table, the `projects` spin/
      status/publish columns, and the **public `published` bucket** that backs shareable links.
+   - [`supabase/schema_v3.sql`](supabase/schema_v3.sql) — publish hardening: locks `published` down
+     to JSON manifests and adds the read-only public **`viewer` bucket**.
+     Then upload [`web/viewer.html`](web/viewer.html) to the **root of the `viewer` bucket**
+     (Dashboard → Storage → viewer → Upload) — publishing fails with a clear error until you do.
 3. In **Project Settings → API**, copy your **Project URL** and **publishable key**.
 4. Create your env file:
 
