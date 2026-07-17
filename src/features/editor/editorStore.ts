@@ -1,10 +1,8 @@
 import { create } from 'zustand';
 
-import type { EditorMode, Hotspot, Severity } from '@/features/projects/types';
-
-function uid(): string {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-}
+import type { EditorMode, Hotspot, PlateMask } from '@/features/projects/types';
+import { clamp01, createHotspot } from './hotspots';
+import { movePlate, resizePlate } from './plateMask';
 
 const HISTORY_CAP = 40;
 
@@ -13,6 +11,8 @@ type Snapshot = {
   backgroundId: string;
   mode: EditorMode;
   name: string;
+  shadow?: boolean;
+  plate?: PlateMask;
 };
 
 type LoadPayload = {
@@ -23,6 +23,8 @@ type LoadPayload = {
   originalUri: string | null;
   cutoutUri: string | null;
   hotspots: Hotspot[];
+  shadow?: boolean;
+  plate?: PlateMask;
 };
 
 type EditorState = {
@@ -34,6 +36,12 @@ type EditorState = {
   cutoutUri: string | null;
   hotspots: Hotspot[];
   selectedId: string | null;
+  /** Ground-shadow override; undefined = per-background default. */
+  shadow?: boolean;
+  /** License-plate mask; undefined = none. */
+  plate?: PlateMask;
+  /** Whether the plate (not a pin) is the current selection. */
+  plateSelected: boolean;
   dirty: boolean;
   hydrated: boolean;
   past: Snapshot[];
@@ -45,8 +53,15 @@ type EditorState = {
   setName: (name: string) => void;
   setMode: (mode: EditorMode) => void;
   setBackground: (backgroundId: string) => void;
+  setShadow: (shadow: boolean) => void;
   setOriginalUri: (uri: string | null) => void;
   setCutout: (uri: string) => void;
+
+  setPlate: (plate: PlateMask | undefined) => void;
+  patchPlate: (patch: Partial<Omit<PlateMask, 'x' | 'y'>>) => void;
+  movePlateTo: (nx: number, ny: number) => void;
+  resizePlateTo: (nx: number, ny: number) => void;
+  selectPlate: (on: boolean) => void;
 
   addHotspot: (x: number, y: number) => void;
   moveHotspot: (id: string, x: number, y: number) => void;
@@ -71,18 +86,26 @@ const initial = {
   cutoutUri: null,
   hotspots: [] as Hotspot[],
   selectedId: null as string | null,
+  shadow: undefined as boolean | undefined,
+  plate: undefined as PlateMask | undefined,
+  plateSelected: false,
   dirty: false,
   hydrated: false,
   past: [] as Snapshot[],
   future: [] as Snapshot[],
 };
 
-const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
-
 export const useEditorStore = create<EditorState>((set, get) => {
   const snapshot = (): Snapshot => {
     const s = get();
-    return { hotspots: s.hotspots, backgroundId: s.backgroundId, mode: s.mode, name: s.name };
+    return {
+      hotspots: s.hotspots,
+      backgroundId: s.backgroundId,
+      mode: s.mode,
+      name: s.name,
+      shadow: s.shadow,
+      plate: s.plate,
+    };
   };
   const pushHistory = () =>
     set((s) => ({ past: [...s.past, snapshot()].slice(-HISTORY_CAP), future: [] }));
@@ -99,7 +122,10 @@ export const useEditorStore = create<EditorState>((set, get) => {
         originalUri: p.originalUri,
         cutoutUri: p.cutoutUri,
         hotspots: p.hotspots,
+        shadow: p.shadow,
+        plate: p.plate,
         selectedId: null,
+        plateSelected: false,
         dirty: false,
         hydrated: true,
         past: [],
@@ -117,23 +143,36 @@ export const useEditorStore = create<EditorState>((set, get) => {
       pushHistory();
       set({ backgroundId, dirty: true });
     },
+    setShadow: (shadow) => {
+      pushHistory();
+      set({ shadow, dirty: true });
+    },
     setOriginalUri: (originalUri) => set({ originalUri }),
     setCutout: (uri) => set({ cutoutUri: uri, dirty: true }),
+
+    setPlate: (plate) => {
+      pushHistory();
+      set({ plate, dirty: true, ...(plate ? {} : { plateSelected: false }) });
+    },
+    patchPlate: (patch) => {
+      pushHistory();
+      set((s) => (s.plate ? { plate: { ...s.plate, ...patch }, dirty: true } : {}));
+    },
+    // Continuous drag/resize — beginInteraction() snapshots once at gesture start.
+    movePlateTo: (nx, ny) =>
+      set((s) => (s.plate ? { plate: movePlate(s.plate, nx, ny), dirty: true } : {})),
+    resizePlateTo: (nx, ny) =>
+      set((s) => (s.plate ? { plate: resizePlate(s.plate, nx, ny), dirty: true } : {})),
+
+    // The plate and pins share one selection: selecting either clears the other.
+    selectPlate: (on) => set(on ? { plateSelected: true, selectedId: null } : { plateSelected: false }),
 
     addHotspot: (x, y) => {
       pushHistory();
       set((s) => {
-        const kind = s.mode;
-        const count = s.hotspots.filter((h) => h.kind === kind).length + 1;
-        const hotspot: Hotspot = {
-          id: uid(),
-          kind,
-          x: clamp01(x),
-          y: clamp01(y),
-          title: kind === 'marketing' ? `Feature ${count}` : `Damage ${count}`,
-          ...(kind === 'inspection' ? { severity: 'medium' as Severity } : {}),
-        };
-        return { hotspots: [...s.hotspots, hotspot], selectedId: hotspot.id, dirty: true };
+        const count = s.hotspots.filter((h) => h.kind === s.mode).length + 1;
+        const hotspot = createHotspot(s.mode, x, y, count);
+        return { hotspots: [...s.hotspots, hotspot], selectedId: hotspot.id, plateSelected: false, dirty: true };
       });
     },
 
@@ -170,7 +209,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
       }));
     },
 
-    setSelected: (id) => set({ selectedId: id }),
+    setSelected: (id) => set((s) => ({ selectedId: id, plateSelected: id ? false : s.plateSelected })),
 
     // Snapshot once at the start of a continuous gesture (e.g. dragging a pin).
     beginInteraction: () => pushHistory(),
@@ -183,6 +222,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
         return {
           ...prev,
           selectedId: null,
+          plateSelected: false,
           past: s.past.slice(0, -1),
           future: [current, ...s.future].slice(0, HISTORY_CAP),
           dirty: true,
@@ -197,6 +237,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
         return {
           ...next,
           selectedId: null,
+          plateSelected: false,
           past: [...s.past, current].slice(-HISTORY_CAP),
           future: s.future.slice(1),
           dirty: true,

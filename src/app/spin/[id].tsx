@@ -1,41 +1,50 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { EmptyState } from '@/components/EmptyState';
+import { Icon } from '@/components/Icon';
 import { IconButton } from '@/components/IconButton';
+import { NotFound } from '@/components/NotFound';
 import { PressableScale } from '@/components/PressableScale';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { batchRemoveBackground, type BatchProgress } from '@/features/background-removal/batch';
-import { BACKGROUND_PRESETS, type BackgroundPreset } from '@/features/editor/backgrounds';
+import { getBackground } from '@/features/editor/backgrounds';
+import { BackgroundStrip } from '@/features/editor/BackgroundStrip';
+import { shadowEnabled } from '@/features/editor/groundShadow';
 import { HotspotSheet } from '@/features/editor/HotspotSheet';
+import { createHotspot } from '@/features/editor/hotspots';
 import type { EditorMode, SpinHotspot } from '@/features/projects/types';
 import { useProject } from '@/features/projects/useProjects';
 import { getSpinFrameUrls, saveSpin, uploadSpinFrame } from '@/features/spin/spin.api';
+import { invalidateSpinFrames, useSpinFrames } from '@/features/spin/useSpin';
 import { SpinViewer } from '@/features/spin/SpinViewer';
+import { usePendingUploads } from '@/features/uploads/usePendingUploads';
+import type { SpinFrameUploadPayload } from '@/features/uploads/uploads';
+import { mapWithConcurrency } from '@/lib/concurrency';
 import { haptics } from '@/lib/haptics';
+import { uploadFileUri, type UploadTask } from '@/lib/uploadQueue';
+import { useDebouncedAutosave } from '@/lib/useDebouncedAutosave';
+import { useRouteId } from '@/lib/useRouteId';
 import { colors, radius, spacing } from '@/theme';
 
-function uid() {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
 export default function SpinScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const id = useRouteId() ?? '';
   const router = useRouter();
   const toast = useToast();
   const qc = useQueryClient();
-  const { data: project } = useProject(id);
+  const { data: project, isError: projectError, refetch: refetchProject } = useProject(id || undefined);
 
   const [hydrated, setHydrated] = useState(false);
   const [frameCount, setFrameCount] = useState(0);
   const [hasCutout, setHasCutout] = useState(false);
   const [backgroundId, setBackgroundId] = useState('transparent');
+  const [shadow, setShadowState] = useState<boolean | undefined>(undefined);
   const [hotspots, setHotspots] = useState<SpinHotspot[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mode, setMode] = useState<EditorMode>('marketing');
@@ -50,50 +59,86 @@ export default function SpinScreen() {
       setFrameCount(spin.frameCount);
       setHasCutout(Boolean(spin.hasCutout));
       setBackgroundId(spin.backgroundId ?? 'transparent');
+      setShadowState(spin.shadow);
       setHotspots(spin.hotspots ?? []);
     }
     setHydrated(true);
   }, [project, hydrated]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  const { data: frameUrls } = useQuery({
-    queryKey: ['spin-frames', id, frameCount, hasCutout],
-    queryFn: () => getSpinFrameUrls(id, frameCount, hasCutout),
-    enabled: frameCount > 0,
-  });
+  // 360° frames still waiting in the upload queue (offline capture / sync in
+  // flight). Shown from their local outbox file; cutout is gated on sync done.
+  const pendingUploads = usePendingUploads(id);
+  const pendingFrames = useMemo(() => {
+    const map: Record<number, UploadTask> = {};
+    pendingUploads.forEach((t) => {
+      if (t.kind === 'spin-frame') map[(t.payload as SpinFrameUploadPayload).frame] = t;
+    });
+    return map;
+  }, [pendingUploads]);
+  const pendingCount = pendingUploads.filter((t) => t.kind === 'spin-frame').length;
 
-  // debounced save
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // If finish-time saveSpin ran offline, the DB says 0 frames while the queue
+  // holds the truth — adopt the queue's count so the spin is usable right away.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!hydrated) return;
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      saveSpin(id, { frameCount, hasCutout, backgroundId, hotspots }).catch(() => {});
-    }, 800);
-    return () => {
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-    };
-  }, [hydrated, id, frameCount, hasCutout, backgroundId, hotspots]);
+    const queued = Object.keys(pendingFrames).reduce((m, k) => Math.max(m, Number(k) + 1), 0);
+    if (queued > frameCount) setFrameCount(queued);
+  }, [hydrated, pendingFrames, frameCount]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  const { data: frameUrls } = useSpinFrames(id, frameCount, hasCutout);
+
+  // Prefer the local outbox file for frames not yet uploaded — the spin is
+  // fully viewable offline, and tiles swap to signed URLs as uploads land.
+  const mergedFrameUrls = useMemo(() => {
+    const remote = frameUrls ?? [];
+    return Array.from({ length: frameCount }, (_, i) => {
+      const pending = pendingFrames[i];
+      return pending && !hasCutout ? uploadFileUri(pending) : (remote[i] ?? null);
+    });
+  }, [frameUrls, pendingFrames, frameCount, hasCutout]);
+
+  // Shared autosave: retry with backoff + flush when leaving the screen —
+  // the spin now has the same no-data-loss guarantees as the editor.
+  const { status: saveStatus } = useDebouncedAutosave({
+    signature: JSON.stringify([frameCount, hasCutout, backgroundId, hotspots, shadow]),
+    enabled: hydrated,
+    save: useCallback(async () => {
+      await saveSpin(id, {
+        frameCount,
+        hasCutout,
+        backgroundId,
+        hotspots,
+        ...(shadow !== undefined ? { shadow } : {}),
+      });
+    }, [id, frameCount, hasCutout, backgroundId, hotspots, shadow]),
+  });
+
+  // One toast per failure streak (retries continue silently in the background).
+  const failureToasted = useRef(false);
+  useEffect(() => {
+    if (saveStatus === 'failed' && !failureToasted.current) {
+      failureToasted.current = true;
+      toast.show('Could not save 360° changes — retrying in background', 'error');
+    } else if (saveStatus === 'saved') {
+      failureToasted.current = false;
+    }
+  }, [saveStatus, toast]);
 
   const selected = selectedId ? hotspots.find((h) => h.id === selectedId) ?? null : null;
+  const spinShadowOn = shadowEnabled(getBackground(backgroundId), shadow);
 
   const addHotspot = useCallback(
     (frame: number, x: number, y: number) => {
-      const count = hotspots.length + 1;
-      const h: SpinHotspot = {
-        id: uid(),
-        kind: mode,
-        frame,
-        x,
-        y,
-        title: mode === 'marketing' ? `Feature ${count}` : `Damage ${count}`,
-        ...(mode === 'inspection' ? { severity: 'medium' as const } : {}),
-      };
+      const count = hotspots.filter((h) => h.kind === mode).length + 1;
+      const h: SpinHotspot = { ...createHotspot(mode, x, y, count), frame };
       setHotspots((hs) => [...hs, h]);
       setSelectedId(h.id);
       haptics.light();
     },
-    [hotspots.length, mode]
+    [hotspots, mode]
   );
 
   const moveHotspot = useCallback((hid: string, x: number, y: number) => {
@@ -101,7 +146,7 @@ export default function SpinScreen() {
   }, []);
 
   const cutout360 = useCallback(async () => {
-    if (frameCount === 0) return;
+    if (frameCount === 0 || pendingCount > 0) return;
     setCutProgress({ done: 0, total: frameCount });
     try {
       const originals = await getSpinFrameUrls(id, frameCount, false);
@@ -114,20 +159,35 @@ export default function SpinScreen() {
         indexed.map((x) => x.uri),
         (p) => setCutProgress(p)
       );
-      let ok = 0;
-      for (let i = 0; i < cutouts.length; i++) {
-        const c = cutouts[i];
-        if (c) {
-          await uploadSpinFrame(id, indexed[i].frame, c, true);
-          ok++;
-        }
-      }
-      if (ok > 0) {
+      // Upload the cutout frames in parallel (bounded) instead of one-by-one.
+      // A single failed upload no longer aborts the rest — we just count it out.
+      const toUpload = cutouts
+        .map((c, i) => (c ? { uri: c, frame: indexed[i].frame } : null))
+        .filter((x): x is { uri: string; frame: number } => x !== null);
+      setCutProgress({ done: 0, total: toUpload.length });
+      const uploaded = await mapWithConcurrency(
+        toUpload,
+        async (item) => {
+          try {
+            await uploadSpinFrame(id, item.frame, item.uri, true);
+            return true;
+          } catch {
+            return false;
+          }
+        },
+        { concurrency: 4, onSettled: (done, total) => setCutProgress({ done, total }) }
+      );
+      const ok = uploaded.filter(Boolean).length;
+      // All-or-nothing: flipping hasCutout with missing frames makes the viewer
+      // request cutout files that don't exist — broken images mid-rotation.
+      if (ok > 0 && ok === frameCount) {
         setHasCutout(true);
         setBackgroundId((b) => (b === 'transparent' ? 'studio-graphite' : b));
-        qc.invalidateQueries({ queryKey: ['spin-frames', id] });
+        invalidateSpinFrames(qc, id);
         haptics.success();
         toast.show('360° background removed', 'success');
+      } else if (ok > 0) {
+        toast.show(`Cut out incomplete (${ok}/${frameCount} frames) — tap again to retry`, 'error');
       } else {
         toast.show('Could not cut out the 360', 'error');
       }
@@ -136,7 +196,17 @@ export default function SpinScreen() {
     } finally {
       setCutProgress(null);
     }
-  }, [frameCount, id, qc, toast]);
+  }, [frameCount, pendingCount, id, qc, toast]);
+
+  if (!id || projectError) {
+    return (
+      <NotFound
+        title="360° unavailable"
+        subtitle={projectError ? "This project couldn't be loaded." : 'This project no longer exists.'}
+        onRetry={projectError ? () => void refetchProject() : undefined}
+      />
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -173,9 +243,10 @@ export default function SpinScreen() {
 
           <View style={styles.viewer}>
             <SpinViewer
-              frameUrls={frameUrls ?? []}
+              frameUrls={mergedFrameUrls}
               cutout={hasCutout}
               backgroundId={backgroundId}
+              shadow={shadow}
               hotspots={hotspots}
               selectedId={selectedId}
               editable
@@ -186,16 +257,39 @@ export default function SpinScreen() {
           </View>
 
           {hasCutout ? (
-            <View style={styles.stripWrap}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.strip}>
-                {BACKGROUND_PRESETS.map((bg) => (
-                  <Swatch key={bg.id} bg={bg} active={bg.id === backgroundId} onPress={() => setBackgroundId(bg.id)} />
-                ))}
-              </ScrollView>
-            </View>
+            <>
+              {backgroundId !== 'transparent' ? (
+                <View style={styles.shadowRow}>
+                  <PressableScale
+                    style={[styles.shadowToggle, spinShadowOn ? styles.shadowToggleOn : null]}
+                    onPress={() => {
+                      haptics.selection();
+                      setShadowState(!spinShadowOn);
+                    }}
+                    haptic="selection"
+                  >
+                    <Icon name="sparkles" size={16} color={spinShadowOn ? colors.primary : colors.textMuted} />
+                    <Text variant="label" color={spinShadowOn ? colors.primary : colors.textMuted}>
+                      Shadow {spinShadowOn ? 'on' : 'off'}
+                    </Text>
+                  </PressableScale>
+                </View>
+              ) : null}
+              <BackgroundStrip activeId={backgroundId} onSelect={setBackgroundId} />
+            </>
           ) : (
             <View style={styles.toolbar}>
-              <Button title="Cut out 360°" icon="scissors" onPress={cutout360} style={styles.flex} />
+              <Button
+                title={
+                  pendingCount > 0
+                    ? `Uploading ${pendingCount} frame${pendingCount === 1 ? '' : 's'}…`
+                    : 'Cut out 360°'
+                }
+                icon="scissors"
+                onPress={cutout360}
+                disabled={pendingCount > 0}
+                style={styles.flex}
+              />
             </View>
           )}
         </>
@@ -229,25 +323,6 @@ export default function SpinScreen() {
   );
 }
 
-function Swatch({ bg, active, onPress }: { bg: BackgroundPreset; active: boolean; onPress: () => void }) {
-  const color =
-    bg.kind === 'color' ? bg.color : bg.kind === 'gradient' ? bg.colors[0] : bg.kind === 'studio' ? bg.wall : '#FFFFFF';
-  return (
-    <PressableScale style={styles.swatchWrap} onPress={onPress} haptic="selection">
-      <View style={[styles.swatch, active && styles.swatchActive, { backgroundColor: color }]}>
-        {bg.kind === 'transparent' ? (
-          <Text variant="body" color="#9A9AA5">
-            ▨
-          </Text>
-        ) : null}
-      </View>
-      <Text variant="caption" faint={!active} numberOfLines={1}>
-        {bg.name}
-      </Text>
-    </PressableScale>
-  );
-}
-
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
@@ -262,21 +337,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  stripWrap: { paddingTop: spacing.md },
-  strip: { gap: spacing.sm, paddingHorizontal: spacing.lg },
-  swatchWrap: { alignItems: 'center', gap: spacing.xs, width: 62 },
-  swatch: {
-    width: 54,
-    height: 54,
-    borderRadius: radius.md,
-    borderWidth: 2,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  swatchActive: { borderColor: colors.primary },
   toolbar: { flexDirection: 'row', paddingHorizontal: spacing.lg, paddingTop: spacing.md },
   flex: { flex: 1 },
+  shadowRow: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
+  shadowToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    alignSelf: 'flex-start',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  shadowToggleOn: { borderColor: colors.primary, backgroundColor: `${colors.primary}18` },
   progress: {
     position: 'absolute',
     top: 0,

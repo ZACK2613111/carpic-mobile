@@ -5,14 +5,18 @@
 //
 // It injects into AndroidManifest.xml, inside <application>:
 //   <meta-data android:name="com.google.mlkit.vision.DEPENDENCIES"
-//              android:value="subject_segmentation" />
+//              android:value="subject_segment" />
 //
-// Docs: https://developers.google.com/ml-kit/tips/installation-paths
+// NOTE: the token MUST be "subject_segment" (ML Kit's short-form dependency
+// name, matching the library's own manifest) — "subject_segmentation" is
+// silently ignored by Play Services and the model would only download on
+// first use, defeating the offline goal.
+// Docs: https://developers.google.com/ml-kit/vision/subject-segmentation/android
 
 const { withAndroidManifest, AndroidConfig } = require('@expo/config-plugins');
 
 const META_NAME = 'com.google.mlkit.vision.DEPENDENCIES';
-const META_VALUE = 'subject_segmentation';
+const META_VALUE = 'subject_segment';
 
 /** @param {import('@expo/config-plugins').ExportedConfig} config */
 module.exports = function withMlKitSubjectSegmentation(config) {

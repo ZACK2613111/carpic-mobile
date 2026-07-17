@@ -1,26 +1,15 @@
-import { decode } from 'base64-arraybuffer';
-// Legacy file API: simplest reliable way to read a local file as base64 for upload.
-import * as FileSystem from 'expo-file-system/legacy';
-
+import { currentUserId, removeFolder, signedUrlFor } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
-import { EMPTY_DOC, EMPTY_SPIN, type Project, type ProjectDoc, type ProjectPatch } from './types';
+import { coerceDoc, coerceSpin, type Project, type ProjectPatch } from './types';
 
 const BUCKET = 'projects';
-
-export type ImageKind = 'original' | 'cutout' | 'export' | 'thumb';
 
 function normalize(row: any): Project {
   return {
     ...row,
-    doc: (row?.doc as ProjectDoc) ?? EMPTY_DOC,
-    spin: row?.spin ?? EMPTY_SPIN,
+    doc: coerceDoc(row?.doc),
+    spin: coerceSpin(row?.spin),
   } as Project;
-}
-
-async function currentUserId(): Promise<string> {
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data.user) throw new Error('You must be signed in.');
-  return data.user.id;
 }
 
 export async function listProjects(): Promise<Project[]> {
@@ -60,14 +49,12 @@ export async function updateProject(id: string, patch: ProjectPatch): Promise<Pr
 }
 
 export async function deleteProject(id: string): Promise<void> {
-  // Best-effort cleanup of the project's storage folder, then delete the row.
+  // Best-effort cleanup: the project's whole storage subtree (shots/, spin/ …)
+  // plus its published manifest, then delete the row (which is what matters).
   try {
     const userId = await currentUserId();
-    const prefix = `${userId}/${id}`;
-    const { data: files } = await supabase.storage.from(BUCKET).list(prefix);
-    if (files && files.length > 0) {
-      await supabase.storage.from(BUCKET).remove(files.map((f) => `${prefix}/${f.name}`));
-    }
+    await removeFolder(BUCKET, `${userId}/${id}`);
+    await removeFolder('published', `${userId}/${id}`);
   } catch {
     // ignore storage cleanup failures; the row delete is what matters
   }
@@ -75,32 +62,7 @@ export async function deleteProject(id: string): Promise<void> {
   if (error) throw error;
 }
 
-/** Upload a local image file to the project's storage folder; returns the object path. */
-export async function uploadImage(
-  projectId: string,
-  kind: ImageKind,
-  localUri: string,
-  contentType: 'image/png' | 'image/jpeg' = 'image/png'
-): Promise<string> {
-  const userId = await currentUserId();
-  const ext = contentType === 'image/jpeg' ? 'jpg' : 'png';
-  const path = `${userId}/${projectId}/${kind}.${ext}`;
-
-  const base64 = await FileSystem.readAsStringAsync(localUri, {
-    encoding: FileSystem.EncodingType.Base64,
-  });
-
-  const { error } = await supabase.storage
-    .from(BUCKET)
-    .upload(path, decode(base64), { contentType, upsert: true });
-  if (error) throw error;
-  return path;
-}
-
 /** Create a short-lived signed URL for a private object path. */
-export async function signedUrl(path: string | null, expiresInSeconds = 3600): Promise<string | null> {
-  if (!path) return null;
-  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, expiresInSeconds);
-  if (error) return null;
-  return data.signedUrl;
+export function signedUrl(path: string | null, expiresInSeconds = 3600): Promise<string | null> {
+  return signedUrlFor(BUCKET, path, expiresInSeconds);
 }

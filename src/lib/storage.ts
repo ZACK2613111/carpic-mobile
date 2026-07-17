@@ -33,7 +33,29 @@ export function publicUrlFor(bucket: string, path: string): string {
 }
 
 export async function currentUserId(): Promise<string> {
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data.user) throw new Error('You must be signed in.');
-  return data.user.id;
+  // getSession reads the locally stored session (no network round-trip) —
+  // getUser() hits /auth/v1/user and would fail every upload while offline.
+  const { data } = await supabase.auth.getSession();
+  const uid = data.session?.user?.id;
+  if (!uid) throw new Error('You must be signed in.');
+  return uid;
+}
+
+/**
+ * Delete every object under `prefix`, descending into subfolders. Supabase's
+ * `list()` is NOT recursive (folders come back as entries with no id), so a
+ * flat list+remove leaves `shots/` and `spin/` subtrees orphaned — this walks
+ * them. Best-effort: a failed page is skipped rather than aborting the caller.
+ */
+export async function removeFolder(bucket: string, prefix: string): Promise<void> {
+  const { data: entries, error } = await supabase.storage.from(bucket).list(prefix, { limit: 1000 });
+  if (error || !entries || entries.length === 0) return;
+  const files = entries.filter((e) => e.id).map((e) => `${prefix}/${e.name}`);
+  const folders = entries.filter((e) => !e.id).map((e) => `${prefix}/${e.name}`);
+  if (files.length > 0) {
+    await supabase.storage.from(bucket).remove(files);
+  }
+  for (const folder of folders) {
+    await removeFolder(bucket, folder);
+  }
 }

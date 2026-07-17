@@ -1,7 +1,8 @@
-import { Asset } from 'expo-asset';
 import * as FileSystem from 'expo-file-system/legacy';
 
+import { getBrand, watermarkVisible } from '@/features/branding/brand';
 import { getSlot } from '@/features/capture/shotTemplate';
+import { decodeVin, vinSummary } from '@/features/vehicle/vin';
 import { updateProject } from '@/features/projects/projects.api';
 import type { Project } from '@/features/projects/types';
 import type { Shot } from '@/features/shots/types';
@@ -15,28 +16,59 @@ const YEAR = 31_536_000;
 
 export type PublishStep = (label: string) => void;
 
+/**
+ * The viewer web app is uploaded ONCE by the developer to the read-only public
+ * "viewer" bucket — clients can only write manifest.json (see
+ * supabase/schema_v3.sql). Fails fast with an actionable error if that
+ * one-time setup step hasn't been done.
+ */
+async function viewerAppUrl(): Promise<string> {
+  const url = publicUrlFor('viewer', 'viewer.html');
+  const head = await fetch(url, { method: 'HEAD' });
+  if (!head.ok) {
+    throw new Error(
+      'Web viewer not installed — upload web/viewer.html to the public "viewer" bucket (see supabase/schema_v3.sql).'
+    );
+  }
+  return url;
+}
+
 export async function publishProject(project: Project, shots: Shot[], onStep?: PublishStep): Promise<string> {
   const uid = await currentUserId();
+  const viewerUrl = await viewerAppUrl();
 
   onStep?.('Preparing photos');
   const captured = shots.filter((s) => s.captured && s.image_path);
-  const manifestShots = [];
-  for (const s of captured) {
-    const useCutout = Boolean(s.cutout_path);
-    const path = useCutout ? (s.cutout_path as string) : (s.image_path as string);
-    const url = await signedUrlFor('projects', path, YEAR);
-    if (!url) continue;
-    const audioUrl = s.audio_path ? await signedUrlFor('projects', s.audio_path, YEAR) : null;
-    manifestShots.push({
-      slot: s.slot,
-      section: s.section,
-      label: getSlot(s.slot)?.label ?? s.slot,
-      url,
-      cutout: useCutout,
-      backgroundId: s.background_id,
-      hotspots: s.doc?.hotspots ?? [],
-      audioUrl,
-    });
+  // Sign every shot's URL(s) in parallel rather than one round-trip at a time;
+  // then drop any shot whose main image URL failed, preserving order.
+  const signed = await Promise.all(
+    captured.map(async (s) => {
+      const useCutout = Boolean(s.cutout_path);
+      const path = useCutout ? (s.cutout_path as string) : (s.image_path as string);
+      const [url, audioUrl] = await Promise.all([
+        signedUrlFor('projects', path, YEAR),
+        s.audio_path ? signedUrlFor('projects', s.audio_path, YEAR) : Promise.resolve(null),
+      ]);
+      if (!url) return null;
+      return {
+        slot: s.slot,
+        section: s.section,
+        label: getSlot(s.slot)?.label ?? s.slot,
+        url,
+        cutout: useCutout,
+        backgroundId: s.background_id,
+        hotspots: s.doc?.hotspots ?? [],
+        shadow: s.doc?.shadow ?? null,
+        plate: s.doc?.plate ?? null,
+        audioUrl,
+      };
+    })
+  );
+  const manifestShots = signed.filter((s): s is NonNullable<typeof s> => s !== null);
+  if (manifestShots.length < captured.length) {
+    // Publishing with silently dropped photos ships a broken gallery to the
+    // buyer — fail loudly instead; publish is retryable.
+    throw new Error('Some photos could not be prepared — check your connection and publish again.');
   }
 
   let spin: unknown = null;
@@ -48,33 +80,45 @@ export async function publishProject(project: Project, shots: Shot[], onStep?: P
         signedUrlFor('projects', spinFramePath(uid, project.id, i, hasCutout), YEAR)
       )
     );
+    if (frames.some((f) => !f)) {
+      throw new Error('Some 360° frames could not be prepared — check your connection and publish again.');
+    }
     spin = {
       frameCount: project.spin.frameCount,
       hasCutout,
       backgroundId: project.spin.backgroundId ?? 'transparent',
       frames,
       hotspots: project.spin.hotspots ?? [],
+      shadow: project.spin.shadow ?? null,
     };
   }
 
   onStep?.('Publishing');
-  const manifest = { name: project.name, generatedAt: new Date().toISOString(), shots: manifestShots, spin };
+  const brand = getBrand();
+  const watermark = watermarkVisible(brand) ? { text: brand.text.trim(), position: brand.position } : null;
+  const vehicle = project.vin ? vinSummary(decodeVin(project.vin)) || null : null;
+  const manifest = {
+    name: project.name,
+    generatedAt: new Date().toISOString(),
+    vehicle,
+    shots: manifestShots,
+    spin,
+    watermark,
+  };
 
   const manifestTmp = `${FileSystem.cacheDirectory}manifest-${project.id}.json`;
   await FileSystem.writeAsStringAsync(manifestTmp, JSON.stringify(manifest), {
     encoding: FileSystem.EncodingType.UTF8,
   });
   const manifestPath = `${uid}/${project.id}/manifest.json`;
-  await uploadFile('published', manifestPath, manifestTmp, 'application/json');
+  try {
+    await uploadFile('published', manifestPath, manifestTmp, 'application/json');
+  } finally {
+    // temp manifest is per-publish garbage — don't let the cache accumulate them
+    await FileSystem.deleteAsync(manifestTmp, { idempotent: true }).catch(() => {});
+  }
   const manifestUrl = publicUrlFor('published', manifestPath);
 
-  // Upload the bundled viewer app (once per user; re-upload is a harmless upsert).
-  const asset = Asset.fromModule(require('../../../web/viewer.html'));
-  await asset.downloadAsync();
-  if (asset.localUri) {
-    await uploadFile('published', `${uid}/viewer.html`, asset.localUri, 'text/html');
-  }
-  const viewerUrl = publicUrlFor('published', `${uid}/viewer.html`);
   const link = `${viewerUrl}?d=${encodeURIComponent(manifestUrl)}`;
 
   await updateProject(project.id, {

@@ -6,6 +6,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 
 import { Text } from '@/components/Text';
 import { getBackground } from '@/features/editor/backgrounds';
+import { groundShadowEllipse, shadowEnabled, shadowStyleFor } from '@/features/editor/groundShadow';
 import type { SpinHotspot } from '@/features/projects/types';
 import { colors, hotspotColor, radius, spacing } from '@/theme';
 
@@ -16,6 +17,7 @@ type Props = {
   frameUrls: (string | null)[];
   cutout?: boolean;
   backgroundId?: string;
+  shadow?: boolean;
   hotspots: SpinHotspot[];
   selectedId?: string | null;
   editable?: boolean;
@@ -28,6 +30,7 @@ export function SpinViewer({
   frameUrls,
   cutout = false,
   backgroundId = 'transparent',
+  shadow,
   hotspots,
   selectedId,
   editable = false,
@@ -39,13 +42,22 @@ export function SpinViewer({
   const [index, setIndex] = useState(0);
   const startIndex = useRef(0);
   const dragPin = useRef<string | null>(null);
+  const prefetched = useRef<Set<string>>(new Set());
   const n = frameUrls.length;
 
   useEffect(() => {
-    frameUrls.forEach((u) => {
-      if (u) Image.prefetch(u);
-    });
-  }, [frameUrls]);
+    // Prefetch only the frames around the current index — pulling all 24
+    // full-res frames on mount burns tens of MB of metered data before the
+    // user has even dragged. Neighbors keep the rotation smooth either way.
+    if (!n) return;
+    for (const off of [0, 1, -1, 2, -2]) {
+      const u = frameUrls[(((index + off) % n) + n) % n];
+      if (u && !prefetched.current.has(u)) {
+        prefetched.current.add(u);
+        Image.prefetch(u);
+      }
+    }
+  }, [index, frameUrls, n]);
 
   const wrap = (i: number) => (n ? ((i % n) + n) % n : 0);
   const step = size.w > 0 && n > 0 ? size.w / n : 1; // one full drag ≈ one full turn
@@ -110,6 +122,9 @@ export function SpinViewer({
         }}
       >
         {cutout ? <SpinBackground bg={backgroundId} /> : null}
+        {cutout && size.w > 0 && shadowEnabled(getBackground(backgroundId), shadow) ? (
+          <SpinGroundShadow bg={backgroundId} w={size.w} h={size.h} />
+        ) : null}
 
         {current ? (
           <Image source={{ uri: current }} style={StyleSheet.absoluteFill} contentFit="contain" cachePolicy="memory-disk" />
@@ -154,6 +169,29 @@ export function SpinViewer({
         ) : null}
       </View>
     </GestureDetector>
+  );
+}
+
+// RN approximation of the Skia ground shadow — a soft dark ellipse under the
+// car. elevation/shadow props don't blur a plain View reliably across devices,
+// so we fake the falloff with a low-opacity ellipse; good enough for preview.
+function SpinGroundShadow({ bg, w, h }: { bg: string; w: number; h: number }) {
+  const { cx, cy, rx, ry } = groundShadowEllipse(w, h);
+  const style = shadowStyleFor(getBackground(bg));
+  return (
+    <View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        left: cx - rx,
+        top: cy - ry,
+        width: rx * 2,
+        height: ry * 2,
+        borderRadius: Math.max(rx, ry),
+        backgroundColor: style.color,
+        opacity: style.opacity,
+      }}
+    />
   );
 }
 

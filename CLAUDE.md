@@ -59,7 +59,10 @@ per-user cloud sync via Supabase.
 
 ## Data
 `projects.doc` is JSONB holding `{ version, hotspots[] }`. Schema + RLS + bucket live in
-`supabase/schema.sql`. **v2 adds `supabase/schema_v2.sql`** — run it too.
+`supabase/schema.sql`. **v2 adds `supabase/schema_v2.sql`, v3 adds `supabase/schema_v3.sql`** —
+run all three, in order. v3 also needs a one-time manual upload of `web/viewer.html` to the
+`viewer` bucket root (see the file's header). Raw jsonb is coerced at the API boundary via
+`coerceDoc`/`coerceSpin` in `src/features/projects/types.ts` — never cast `doc`/`spin` directly.
 
 ## v2 — multi-shot, 360, publish, engine
 A project = many **shots** + a **360 spin**. Flow: Projects list → **project dashboard**
@@ -71,9 +74,11 @@ A project = many **shots** + a **360 spin**. Flow: Projects list → **project d
 - **360:** `src/features/spin/*` — frames at `<uid>/<projectId>/spin/frame_NNN(.jpg|_cutout.png)`,
   count+hotspots in `projects.spin` (jsonb). `SpinViewer` drag-rotates; `batch.ts` cuts out all frames.
 - **Publish:** `src/features/publish/publish.ts` → builds a manifest with **1-year signed URLs** to the
-  private bucket, uploads `manifest.json` + the bundled `web/viewer.html` (via `metro.config.js`
-  assetExts `html`) to the **public `published` bucket**; link = `viewer.html?d=<manifestUrl>`.
-  Keep the manifest field names in sync with `web/viewer.html`.
+  private bucket and uploads `manifest.json` to the **public `published` bucket** (locked down by
+  schema_v3 to JSON manifests only). The viewer app is NOT uploaded by clients: it lives in the
+  read-only public **`viewer` bucket** (one-time manual upload of `web/viewer.html` to the bucket
+  root); link = `viewer.html?d=<manifestUrl>`. Keep the manifest field names in sync with
+  `web/viewer.html`, and re-upload it to the bucket whenever it changes.
 - **Engine sound:** `src/features/editor/EngineAudio.tsx` (expo-audio) shows only for the engine slot
   (`getSlot(shot.slot)?.audio`); records → `shots.audio_path`; surfaces in the web viewer.
 - **Shared storage helper:** `src/lib/storage.ts` (`uploadFile`, `signedUrlFor`, `publicUrlFor`).

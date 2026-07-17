@@ -1,21 +1,34 @@
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ToastProvider } from '@/components/Toast';
-import { asyncStoragePersister, queryClient } from '@/lib/queryClient';
+import { loadBrand } from '@/features/branding/brand';
+import { initUploads } from '@/features/uploads/uploads';
+import { asyncStoragePersister, dehydrateOptions, queryClient } from '@/lib/queryClient';
 import { AuthProvider } from '@/providers/AuthProvider';
 import { colors } from '@/theme';
 
+// Route-level error boundary: a crash in any screen renders a recoverable
+// fallback instead of taking down the app.
+export { ScreenErrorBoundary as ErrorBoundary } from '@/components/ScreenErrorBoundary';
+
 export default function RootLayout() {
+  // Restore the persisted upload outbox and start draining (offline-first).
+  useEffect(() => {
+    initUploads();
+    void loadBrand();
+  }, []);
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <PersistQueryClientProvider
           client={queryClient}
-          persistOptions={{ persister: asyncStoragePersister, maxAge: 1000 * 60 * 60 * 24 }}
+          persistOptions={{ persister: asyncStoragePersister, maxAge: 1000 * 60 * 60 * 24, dehydrateOptions }}
         >
           <ToastProvider>
             <AuthProvider>
