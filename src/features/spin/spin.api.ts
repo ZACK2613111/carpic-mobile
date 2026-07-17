@@ -1,5 +1,5 @@
-import { updateProject } from '@/features/projects/projects.api';
-import type { SpinData } from '@/features/projects/types';
+import { getProject, updateProject } from '@/features/projects/projects.api';
+import { EMPTY_SPIN, type SpinData } from '@/features/projects/types';
 import { currentUserId, signedUrlFor, uploadFile } from '@/lib/storage';
 
 const BUCKET = 'projects';
@@ -25,6 +25,19 @@ export async function uploadSpinFrame(
 
 export async function saveSpin(projectId: string, spin: SpinData): Promise<void> {
   await updateProject(projectId, { spin });
+}
+
+/**
+ * Raise the stored frameCount to at least `minCount` without touching the other
+ * spin fields. Called by the upload queue as frames sync after an offline
+ * capture — when the immediate saveSpin at finish time couldn't reach the DB,
+ * the count converges to the truth as uploads land (FIFO, so in order).
+ */
+export async function ensureSpinFrameCount(projectId: string, minCount: number): Promise<void> {
+  const project = await getProject(projectId);
+  const spin = project.spin ?? EMPTY_SPIN;
+  if (spin.frameCount >= minCount) return;
+  await saveSpin(projectId, { ...spin, frameCount: minCount });
 }
 
 /** Signed URLs for each spin frame (original or cutout), in order. */

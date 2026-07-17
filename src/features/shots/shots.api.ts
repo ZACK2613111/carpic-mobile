@@ -1,4 +1,4 @@
-import { EMPTY_DOC } from '@/features/projects/types';
+import { coerceDoc } from '@/features/projects/types';
 import { currentUserId, signedUrlFor, uploadFile } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
 import type { Shot, ShotPatch } from './types';
@@ -6,7 +6,7 @@ import type { Shot, ShotPatch } from './types';
 const BUCKET = 'projects';
 
 function normalize(row: any): Shot {
-  return { ...row, doc: row?.doc ?? EMPTY_DOC } as Shot;
+  return { ...row, doc: coerceDoc(row?.doc) } as Shot;
 }
 
 export async function listShots(projectId: string): Promise<Shot[]> {
