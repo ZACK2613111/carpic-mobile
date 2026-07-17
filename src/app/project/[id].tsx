@@ -1,5 +1,6 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, Share, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,10 +11,11 @@ import { IconButton } from '@/components/IconButton';
 import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
+import { captureLinkUrl, getOrCreateCaptureLink } from '@/features/capture-links/captureLinks.api';
 import { GROUP_LABELS, GROUP_ORDER, SHOT_TEMPLATE, type ShotSlot } from '@/features/capture/shotTemplate';
 import { publishProject } from '@/features/publish/publish';
 import type { Shot } from '@/features/shots/types';
-import { useShots, useShotSignedUrl } from '@/features/shots/useShots';
+import { shotKeys, useShots, useShotSignedUrl } from '@/features/shots/useShots';
 import { usePendingUploads } from '@/features/uploads/usePendingUploads';
 import type { ShotUploadPayload } from '@/features/uploads/uploads';
 import { useProject } from '@/features/projects/useProjects';
@@ -26,6 +28,16 @@ export default function ProjectDashboard() {
   const toast = useToast();
   const { data: project } = useProject(id);
   const { data: shots, isLoading } = useShots(id);
+  const qc = useQueryClient();
+
+  // Photos can arrive from OUTSIDE the app (remote capture link) — refetch the
+  // shot list whenever this screen regains focus so they show up without a
+  // manual reload.
+  useFocusEffect(
+    useCallback(() => {
+      if (id) qc.invalidateQueries({ queryKey: shotKeys.list(id) });
+    }, [id, qc])
+  );
 
   const bySlot = useMemo(() => {
     const map: Record<string, Shot> = {};
@@ -51,6 +63,23 @@ export default function ProjectDashboard() {
   const pct = Math.round((capturedCount / total) * 100);
 
   const [publishing, setPublishing] = useState<string | null>(null);
+  const [requesting, setRequesting] = useState(false);
+
+  // "Request photos": share a tokenized browser link so the vehicle owner can
+  // shoot the guided list themselves — no app install on their side.
+  const doRequestPhotos = useCallback(async () => {
+    if (requesting) return;
+    setRequesting(true);
+    try {
+      const link = await getOrCreateCaptureLink(id);
+      const url = captureLinkUrl(link);
+      await Share.share({ message: url, url });
+    } catch (e) {
+      toast.show(e instanceof Error ? e.message : 'Could not create the link', 'error');
+    } finally {
+      setRequesting(false);
+    }
+  }, [id, requesting, toast]);
   const doPublish = useCallback(async () => {
     if (!project) return;
     if (capturedCount === 0) {
@@ -142,6 +171,14 @@ export default function ProjectDashboard() {
               onPress={doPublish}
             />
           </View>
+          <View style={styles.actionRow}>
+            <ActionTile
+              icon="camera"
+              label="Request photos"
+              hint={requesting ? 'Preparing…' : 'Owner shoots via link'}
+              onPress={doRequestPhotos}
+            />
+          </View>
 
           {/* shot groups */}
           {GROUP_ORDER.map((group) => {
@@ -187,7 +224,7 @@ function ActionTile({
   hint,
   onPress,
 }: {
-  icon: 'refresh' | 'share';
+  icon: 'refresh' | 'share' | 'camera';
   label: string;
   hint?: string;
   onPress: () => void;

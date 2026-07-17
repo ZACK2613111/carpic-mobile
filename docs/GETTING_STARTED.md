@@ -83,6 +83,9 @@ Supabase is the backend: **auth** (accounts), **Postgres** (your data), and **St
    **Storage** → **viewer** → **Upload file**, and upload [`web/viewer.html`](../web/viewer.html) from
    this repo to the bucket **root**. The app deliberately can't upload it for you — clients are only
    allowed to write JSON manifests, so nobody can host arbitrary HTML on your Supabase domain.
+   For the **remote capture link** feature, also upload [`web/capture.html`](../web/capture.html) to the
+   same bucket root, run [`supabase/schema_v4.sql`](../supabase/schema_v4.sql), and deploy the two Edge
+   Functions (see that file's header for the two CLI commands).
 5. **(Recommended for testing)** Turn off email confirmation so you can sign in immediately:
    **Authentication → Sign In / Providers → Email** → toggle **Confirm email** *off* → Save.
    (Turn it back on before going live.)

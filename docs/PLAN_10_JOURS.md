@@ -245,3 +245,16 @@ backlog d'août écrit.
   shared values Reanimated (commit fin de geste) — les deux changent le COMPORTEMENT tactile et ne peuvent
   pas se valider sans device ; à faire dans la foulée du Jour 1. Le découpage d'aujourd'hui les rend faciles :
   le spin pourra consommer `useCanvasGestures` presque tel quel.
+- 2026-07-17 — **Jour 8 : code terminé.** `supabase/schema_v4.sql` : table `capture_links` (token 32 hex
+  généré côté serveur via `gen_random_bytes`, expiration 7 j, `revoked_at`/`used_at`, RLS owner-only —
+  l'anonyme n'a AUCUN accès direct). Edge Functions Deno (`supabase/functions/`) : `capture-manifest`
+  (GET ?t= → nom du véhicule + slots FR + flags "done", rien d'autre ne fuit) et `capture-upload`
+  (POST JPEG ≤ 8 Mo → écrit `<uid>/<projet>/shots/<slot>/original.jpg` via service role + upsert `shots`
+  + stamp `used_at`) ; helpers partagés `_shared/capture.ts` (le template y est dupliqué depuis
+  `shotTemplate.ts` — commentaire de synchro). App : `features/capture-links/captureLinks.api.ts`
+  (getOrCreate qui réutilise le lien actif, revoke, URL = capture.html?t=…&e=<functions>) + tuile
+  "Request photos" sur le dashboard → share sheet. tsconfig/eslint excluent `supabase/functions` (Deno).
+  **Étapes manuelles à faire avec le Jour 1 :** exécuter schema_v4.sql + `supabase functions deploy
+  capture-manifest --no-verify-jwt` et `capture-upload --no-verify-jwt` (CLI). **Reste (Jour 9) :**
+  la page `web/capture.html` elle-même + rafraîchissement du dashboard au focus + révocation dans l'UI.
+  L'acceptation curl du J8 est testable SANS device une fois le déploiement fait.

@@ -17,5 +17,10 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
+  ],
+  // Deno code (Edge Functions) — has its own runtime/globals, not part of the app build.
+  "exclude": [
+    "node_modules",
+    "supabase/functions"
   ]
 }

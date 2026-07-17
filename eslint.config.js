@@ -40,6 +40,7 @@ module.exports = defineConfig([
     },
   },
   {
-    ignores: ['dist/*'],
+    // Deno Edge Functions have their own runtime and lint rules.
+    ignores: ['dist/*', 'supabase/functions/**'],
   },
 ]);
