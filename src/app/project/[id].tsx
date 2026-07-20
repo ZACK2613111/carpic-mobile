@@ -185,7 +185,6 @@ export default function ProjectDashboard() {
           {inspection.inspectionCount > 0 ? (
             <View style={styles.vinCard}>
               <View style={styles.vinHeader}>
-                <Icon name="wrench" size={18} color={colors.primary} />
                 <Text variant="bodyStrong">Condition</Text>
                 <Text variant="caption" muted style={styles.conditionCount}>
                   {inspection.inspectionCount} point{inspection.inspectionCount === 1 ? '' : 's'}
@@ -301,7 +300,6 @@ function VinCard({ projectId, initialVin }: { projectId: string; initialVin: str
   return (
     <View style={styles.vinCard}>
       <View style={styles.vinHeader}>
-        <Icon name="car" size={18} color={colors.primary} />
         <Text variant="bodyStrong">Vehicle</Text>
       </View>
       <TextField
@@ -384,7 +382,7 @@ function ShotTile({
             transition={120}
           />
         ) : (
-          <Icon name={slot.group === 'engine' ? 'car' : 'camera'} size={20} color={colors.textFaint} />
+          <Icon name="plus" size={18} color={colors.textFaint} />
         )}
         {shot?.captured ? (
           <View style={styles.badge}>

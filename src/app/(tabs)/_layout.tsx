@@ -3,6 +3,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { Icon } from '@/components/Icon';
 import { isSupabaseConfigured } from '@/lib/env';
+import { fontFamily } from '@/lib/fonts';
 import { useAuth } from '@/providers/AuthProvider';
 import { colors } from '@/theme';
 
@@ -31,12 +32,12 @@ export default function TabsLayout() {
           height: 62,
           paddingTop: 6,
         },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        tabBarLabelStyle: { fontSize: 11, fontFamily: fontFamily.semibold },
       }}
     >
       <Tabs.Screen
         name="index"
-        options={{ title: 'Projects', tabBarIcon: ({ color }) => <Icon name="car" size={24} color={color} /> }}
+        options={{ title: 'Projects', tabBarIcon: ({ color }) => <Icon name="image" size={22} color={color} /> }}
       />
       <Tabs.Screen
         name="settings"

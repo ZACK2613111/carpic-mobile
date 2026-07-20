@@ -11,14 +11,15 @@ type Props = {
   title: string;
   subtitle?: string;
   actionLabel?: string;
+  actionIcon?: IconName;
   onAction?: () => void;
 };
 
-export function EmptyState({ icon, title, subtitle, actionLabel, onAction }: Props) {
+export function EmptyState({ icon, title, subtitle, actionLabel, actionIcon = 'plus', onAction }: Props) {
   return (
     <View style={styles.wrap}>
-      <View style={styles.iconCircle}>
-        <Icon name={icon} size={34} color={colors.textMuted} />
+      <View style={styles.iconWrap}>
+        <Icon name={icon} size={26} color={colors.textMuted} />
       </View>
       <Text variant="heading" center>
         {title}
@@ -29,7 +30,7 @@ export function EmptyState({ icon, title, subtitle, actionLabel, onAction }: Pro
         </Text>
       ) : null}
       {actionLabel && onAction ? (
-        <Button title={actionLabel} icon="plus" onPress={onAction} style={styles.action} />
+        <Button title={actionLabel} icon={actionIcon} onPress={onAction} style={styles.action} />
       ) : null}
     </View>
   );
@@ -37,10 +38,10 @@ export function EmptyState({ icon, title, subtitle, actionLabel, onAction }: Pro
 
 const styles = StyleSheet.create({
   wrap: { alignItems: 'center', justifyContent: 'center', padding: spacing.xl, gap: spacing.sm },
-  iconCircle: {
-    width: 84,
-    height: 84,
-    borderRadius: radius.pill,
+  iconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.md,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,

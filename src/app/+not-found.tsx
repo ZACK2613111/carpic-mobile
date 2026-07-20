@@ -15,7 +15,7 @@ export default function NotFoundScreen() {
       <Text variant="body" muted center>
         This link doesn&apos;t match anything in CarStudio.
       </Text>
-      <Button title="Go home" icon="car" onPress={() => router.replace('/')} />
+      <Button title="Go home" onPress={() => router.replace('/')} />
     </View>
   );
 }
