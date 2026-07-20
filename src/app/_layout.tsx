@@ -1,4 +1,5 @@
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
+import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -7,7 +8,9 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ToastProvider } from '@/components/Toast';
 import { loadBrand } from '@/features/branding/brand';
+import { loadCapturePrefs } from '@/features/capture/capturePrefs';
 import { initUploads } from '@/features/uploads/uploads';
+import { fontAssets } from '@/lib/fonts';
 import { asyncStoragePersister, dehydrateOptions, queryClient } from '@/lib/queryClient';
 import { AuthProvider } from '@/providers/AuthProvider';
 import { colors } from '@/theme';
@@ -17,11 +20,18 @@ import { colors } from '@/theme';
 export { ScreenErrorBoundary as ErrorBoundary } from '@/components/ScreenErrorBoundary';
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts(fontAssets);
+
   // Restore the persisted upload outbox and start draining (offline-first).
   useEffect(() => {
     initUploads();
     void loadBrand();
+    void loadCapturePrefs();
   }, []);
+
+  // Hold the first frame until the typeface is ready so text doesn't reflow
+  // from a system-font flash into Sora.
+  if (!fontsLoaded) return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -32,7 +42,7 @@ export default function RootLayout() {
         >
           <ToastProvider>
             <AuthProvider>
-              <StatusBar style="light" />
+              <StatusBar style="dark" />
               <Stack
                 screenOptions={{
                   headerShown: false,

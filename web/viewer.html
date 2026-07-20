@@ -285,6 +285,40 @@
         return wrap;
       }
 
+      // Marketing pins → a buyer-facing highlights list (the positive twin of
+      // the condition report). Computed client-side from the manifest.
+      function buildHighlights(m) {
+        var items = [];
+        (m.shots || []).forEach(function (s) {
+          (s.hotspots || []).forEach(function (h) {
+            if (h.kind === 'marketing') items.push({ area: s.label || '', h: h });
+          });
+        });
+        if (m.spin && m.spin.hotspots) {
+          m.spin.hotspots.forEach(function (h) {
+            if (h.kind === 'marketing') items.push({ area: '360°', h: h });
+          });
+        }
+        if (!items.length) return null;
+        var wrap = document.createElement('div');
+        wrap.appendChild(el('div', 'section-label', 'Highlights · ' + items.length));
+        var list = el('div', 'condition');
+        items.forEach(function (it) {
+          var row = el('div', 'cond-item');
+          var dot = el('span', 'cond-dot'); dot.style.background = '#4b7bff'; row.appendChild(dot);
+          var body = el('div', 'cond-body');
+          var head = el('div', 'cond-head');
+          head.appendChild(el('span', 'cond-title', it.h.title || 'Feature'));
+          if (it.area) head.appendChild(el('span', 'cond-area', it.area));
+          body.appendChild(head);
+          if (it.h.description) body.appendChild(el('div', 'cond-desc', it.h.description));
+          row.appendChild(body);
+          list.appendChild(row);
+        });
+        wrap.appendChild(list);
+        return wrap;
+      }
+
       function render(m) {
         WATERMARK = m.watermark || null;
         var app = document.getElementById('app');
@@ -295,6 +329,9 @@
         if (m.spin && m.spin.frameCount > 0 && m.spin.frames && m.spin.frames.length) {
           app.appendChild(build360(m.spin));
         }
+
+        var highlights = buildHighlights(m);
+        if (highlights) app.appendChild(highlights);
 
         var condition = buildCondition(m);
         if (condition) app.appendChild(condition);

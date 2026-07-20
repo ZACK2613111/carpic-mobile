@@ -1,43 +1,49 @@
-// Central design system tokens. Dark-first — a photo studio looks best on dark chrome.
+// Central design system tokens. Light, clean chrome — a professional tool on a
+// white ground. (Camera viewfinders stay black; that's correct, not chrome.)
 import type { TextStyle, ViewStyle } from 'react-native';
 
 export const colors = {
-  bg: '#0A0A0F',
-  bgElevated: '#111119',
-  surface: '#15151F',
-  surfaceAlt: '#1C1C28',
-  elevated: '#232331',
-  hairline: '#26263340',
-  border: '#2E2E3C',
+  bg: '#FFFFFF',
+  bgElevated: '#FFFFFF',
+  surface: '#F6F7F9',
+  surfaceAlt: '#EEF0F4',
+  elevated: '#FFFFFF',
+  hairline: '#1114260D',
+  border: '#E4E7EE',
 
-  text: '#F6F7FB',
-  textMuted: '#A2A3B2',
-  textFaint: '#6C6D7E',
+  text: '#14151A',
+  textMuted: '#5B6070',
+  textFaint: '#9A9EAC',
 
-  primary: '#4B7BFF',
-  primaryDim: '#3660D8',
+  primary: '#3E63DD',
+  primaryDim: '#2F4FC0',
   primaryText: '#FFFFFF',
-  accent: '#8B5CFF',
+  // Single restrained accent — no secondary hue. Kept equal to primary so any
+  // legacy `accent` reference stays on-brand instead of reintroducing colour.
+  accent: '#3E63DD',
 
-  danger: '#FF5A5A',
-  warning: '#FFB020',
-  success: '#2ED47A',
+  danger: '#E5484D',
+  warning: '#E08600',
+  success: '#12A150',
 
   // hotspot palette
-  marketing: '#4B7BFF',
-  inspectionLow: '#FFD23A',
-  inspectionMedium: '#FFA83A',
-  inspectionHigh: '#FF5A5A',
+  marketing: '#3E63DD',
+  inspectionLow: '#E0A400',
+  inspectionMedium: '#E08600',
+  inspectionHigh: '#E5484D',
 
-  overlay: 'rgba(6,6,10,0.72)',
-  scrim: 'rgba(0,0,0,0.5)',
+  overlay: 'rgba(255,255,255,0.86)',
+  scrim: 'rgba(17,18,26,0.45)',
 } as const;
 
+// Gradients are deliberately flat now — a professional tool reads as solid
+// surfaces, not candy. `brand` is two near-identical shades so any remaining
+// use looks like a solid fill with a whisper of depth, never a rainbow.
 export const gradients = {
-  brand: ['#4B7BFF', '#8B5CFF'] as [string, string],
-  brandDiag: ['#3660D8', '#8B5CFF'] as [string, string],
-  hero: ['#141430', '#0A0A0F'] as [string, string],
-  card: ['#1A1A28', '#141420'] as [string, string],
+  brand: ['#3E63DD', '#3556C9'] as [string, string],
+  brandDiag: ['#3E63DD', '#2F4FC0'] as [string, string],
+  hero: ['#FFFFFF', '#F6F7F9'] as [string, string],
+  card: ['#FFFFFF', '#F6F7F9'] as [string, string],
 };
 
 export const spacing = {
@@ -51,10 +57,10 @@ export const spacing = {
 } as const;
 
 export const radius = {
-  sm: 8,
-  md: 12,
-  lg: 18,
-  xl: 26,
+  sm: 6,
+  md: 10,
+  lg: 12,
+  xl: 16,
   pill: 999,
 } as const;
 
@@ -78,14 +84,18 @@ export const typography = {
   label: { fontSize: 12, lineHeight: 16, fontWeight: '700', letterSpacing: 0.5 },
 } as const satisfies Record<string, TextStyle>;
 
+// Soft, cool-grey shadows tuned for a white ground — depth you feel, not a
+// hard black drop.
 export const shadow = {
-  sm: { shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 3 },
-  md: { shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 8 },
-  lg: { shadowColor: '#000', shadowOpacity: 0.42, shadowRadius: 24, shadowOffset: { width: 0, height: 14 }, elevation: 14 },
+  sm: { shadowColor: '#1A2340', shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
+  md: { shadowColor: '#1A2340', shadowOpacity: 0.1, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 6 },
+  lg: { shadowColor: '#1A2340', shadowOpacity: 0.14, shadowRadius: 30, shadowOffset: { width: 0, height: 16 }, elevation: 12 },
 } as const satisfies Record<string, ViewStyle>;
 
-export function glow(color: string, intensity = 0.5): ViewStyle {
-  return { shadowColor: color, shadowOpacity: intensity, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 10 };
+// Retained for API compatibility, but no longer a coloured "glow". Professional
+// depth = a soft neutral shadow. Colour/intensity args are ignored on purpose.
+export function glow(_color?: string, _intensity?: number): ViewStyle {
+  return { shadowColor: '#1A2340', shadowOpacity: 0.12, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 6 };
 }
 
 export const motion = {

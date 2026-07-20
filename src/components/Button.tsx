@@ -1,11 +1,10 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { ActivityIndicator, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { Icon, type IconName } from '@/components/Icon';
 import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
-import { colors, glow, gradients, radius, spacing } from '@/theme';
+import { colors, radius, spacing } from '@/theme';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 type Size = 'sm' | 'md' | 'lg';
@@ -59,27 +58,14 @@ export function Button({
 
   const base: StyleProp<ViewStyle> = [styles.base, { height, borderRadius: radius.md }];
 
-  if (variant === 'primary') {
-    return (
-      <PressableScale onPress={onPress} disabled={isDisabled} style={[isDisabled && styles.disabled, style]}>
-        <LinearGradient
-          colors={gradients.brand}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[base, glow(colors.primary, 0.35)]}
-        >
-          {inner}
-        </LinearGradient>
-      </PressableScale>
-    );
-  }
-
   const variantStyle =
-    variant === 'danger'
-      ? { backgroundColor: colors.danger, borderColor: colors.danger }
-      : variant === 'ghost'
-        ? { backgroundColor: 'transparent', borderColor: colors.border }
-        : { backgroundColor: colors.surfaceAlt, borderColor: colors.border };
+    variant === 'primary'
+      ? { backgroundColor: colors.primary, borderColor: colors.primary }
+      : variant === 'danger'
+        ? { backgroundColor: colors.danger, borderColor: colors.danger }
+        : variant === 'ghost'
+          ? { backgroundColor: 'transparent', borderColor: colors.border }
+          : { backgroundColor: colors.surfaceAlt, borderColor: colors.border };
 
   return (
     <PressableScale

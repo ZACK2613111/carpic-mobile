@@ -43,7 +43,6 @@ export default function NewProjectScreen() {
           </Text>
           <TextField
             label="CAR"
-            leftIcon="car"
             value={name}
             onChangeText={setName}
             placeholder="e.g. BMW 320d 2019"

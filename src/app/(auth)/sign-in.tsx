@@ -1,4 +1,3 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
@@ -6,12 +5,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { ConfigNotice } from '@/components/ConfigNotice';
-import { Icon } from '@/components/Icon';
 import { Text } from '@/components/Text';
 import { TextField } from '@/components/TextField';
 import { isSupabaseConfigured } from '@/lib/env';
 import { useAuth } from '@/providers/AuthProvider';
-import { colors, glow, gradients, radius, spacing } from '@/theme';
+import { colors, radius, spacing } from '@/theme';
 
 export default function SignIn() {
   const { signIn } = useAuth();
@@ -45,14 +43,11 @@ export default function SignIn() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.hero}>
-            <LinearGradient
-              colors={gradients.brand}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[styles.logo, glow(colors.primary, 0.5)]}
-            >
-              <Icon name="car" size={40} color="#FFFFFF" />
-            </LinearGradient>
+            <View style={styles.logo}>
+              <Text variant="heading" color="#FFFFFF">
+                CS
+              </Text>
+            </View>
             <Text variant="title">CarStudio</Text>
             <Text variant="body" muted center>
               Studio-quality car photos, right on your phone.
@@ -105,9 +100,10 @@ const styles = StyleSheet.create({
   scroll: { flexGrow: 1, justifyContent: 'center', padding: spacing.xl, gap: spacing.xl },
   hero: { alignItems: 'center', gap: spacing.sm },
   logo: {
-    width: 88,
-    height: 88,
-    borderRadius: radius.xl,
+    width: 64,
+    height: 64,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.sm,

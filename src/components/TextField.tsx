@@ -3,6 +3,7 @@ import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 
 import { Icon, type IconName } from '@/components/Icon';
 import { Text } from '@/components/Text';
+import { fontFamily } from '@/lib/fonts';
 import { colors, radius, spacing, typography } from '@/theme';
 
 type Props = TextInputProps & {
@@ -60,5 +61,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     paddingVertical: spacing.md,
     ...typography.body,
+    fontWeight: undefined,
+    fontFamily: fontFamily.regular,
   },
 });
