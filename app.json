@@ -13,6 +13,7 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSPhotoLibraryAddUsageDescription": "CarStudio saves your finished car photos to your library.",
+        "NSMotionUsageDescription": "CarStudio reads device motion to show a level / horizon guide while shooting.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },

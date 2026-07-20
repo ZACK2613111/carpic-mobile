@@ -34,7 +34,9 @@ export type IconName =
   | 'down'
   | 'play'
   | 'pause'
-  | 'mic';
+  | 'mic'
+  | 'grid'
+  | 'bolt';
 
 // Feather/Tabler-style 24x24 stroke icons. Children inherit stroke/fill from the
 // wrapping <G>, so definitions stay color-agnostic.
@@ -214,6 +216,16 @@ const ICONS: Record<IconName, React.ReactNode> = {
       <Path d="M8 23h8" />
     </>
   ),
+  grid: (
+    <>
+      <Rect x={3} y={3} width={18} height={18} rx={2} />
+      <Path d="M9 3v18" />
+      <Path d="M15 3v18" />
+      <Path d="M3 9h18" />
+      <Path d="M3 15h18" />
+    </>
+  ),
+  bolt: <Path d="M13 2 3 14h9l-1 8 10-12h-9z" />,
 };
 
 type Props = {

@@ -10,12 +10,14 @@ import { Text } from '@/components/Text';
 import { TextField } from '@/components/TextField';
 import { activeEngine } from '@/features/background-removal/registry';
 import { setBrand, useBrand, type WatermarkPosition } from '@/features/branding/brand';
+import { setCapturePrefs, useCapturePrefs } from '@/features/capture/capturePrefs';
 import { useAuth } from '@/providers/AuthProvider';
 import { colors, radius, spacing } from '@/theme';
 
 export default function SettingsScreen() {
   const { user, signOut } = useAuth();
   const brand = useBrand();
+  const prefs = useCapturePrefs();
 
   const confirmSignOut = useCallback(() => {
     Alert.alert('Sign out', 'Are you sure you want to sign out?', [
@@ -37,6 +39,30 @@ export default function SettingsScreen() {
 
         <Section title="Account">
           <Row icon="user" label="Email" value={user?.email ?? '—'} />
+        </Section>
+
+        <Section title="Capture">
+          <ToggleRow
+            icon="bolt"
+            label="Fast mode"
+            hint="Shoot and auto-advance — no review between shots"
+            on={prefs.fastMode}
+            onToggle={() => setCapturePrefs({ fastMode: !prefs.fastMode })}
+          />
+          <ToggleRow
+            icon="grid"
+            label="Grid"
+            hint="Rule-of-thirds overlay in the viewfinder"
+            on={prefs.grid}
+            onToggle={() => setCapturePrefs({ grid: !prefs.grid })}
+          />
+          <ToggleRow
+            icon="crosshair"
+            label="Level guide"
+            hint="Live horizon line — turns green when straight"
+            on={prefs.level}
+            onToggle={() => setCapturePrefs({ level: !prefs.level })}
+          />
         </Section>
 
         <Section title="Watermark">
@@ -86,8 +112,8 @@ export default function SettingsScreen() {
         </Section>
 
         <Section title="About">
-          <Row icon="car" label="App" value="CarStudio" />
-          <Row icon="sparkles" label="Version" value={Constants.expoConfig?.version ?? '1.0.0'} />
+          <Row icon="image" label="App" value="CarStudio" />
+          <Row icon="layers" label="Version" value={Constants.expoConfig?.version ?? '1.0.0'} />
         </Section>
 
         <Button title="Sign out" variant="secondary" icon="logout" onPress={confirmSignOut} style={styles.signOut} />
@@ -125,6 +151,39 @@ function Row({ icon, label, value }: { icon: IconName; label: string; value: str
   );
 }
 
+function ToggleRow({
+  icon,
+  label,
+  hint,
+  on,
+  onToggle,
+}: {
+  icon: IconName;
+  label: string;
+  hint?: string;
+  on: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <View style={styles.row}>
+      <View style={styles.rowLeft}>
+        <View style={styles.rowIcon}>
+          <Icon name={icon} size={18} color={colors.textMuted} />
+        </View>
+        <View style={styles.toggleText}>
+          <Text variant="body">{label}</Text>
+          {hint ? (
+            <Text variant="caption" faint>
+              {hint}
+            </Text>
+          ) : null}
+        </View>
+      </View>
+      <Button title={on ? 'On' : 'Off'} variant={on ? 'primary' : 'secondary'} size="sm" onPress={onToggle} />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   content: { padding: spacing.lg, gap: spacing.xl, paddingBottom: spacing.xxxl },
@@ -145,6 +204,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   rowLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flexShrink: 1 },
+  toggleText: { flexShrink: 1, gap: 1 },
   rowIcon: {
     width: 34,
     height: 34,
