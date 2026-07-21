@@ -325,7 +325,14 @@ export default function SpinScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.hairline,
+  },
   title: { flex: 1, textAlign: 'center' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   modeRow: { paddingHorizontal: spacing.lg, paddingBottom: spacing.sm },
