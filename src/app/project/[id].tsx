@@ -11,6 +11,7 @@ import { Icon } from '@/components/Icon';
 import { IconButton } from '@/components/IconButton';
 import { NotFound } from '@/components/NotFound';
 import { PressableScale } from '@/components/PressableScale';
+import { Skeleton } from '@/components/Skeleton';
 import { Text } from '@/components/Text';
 import { TextField } from '@/components/TextField';
 import { useToast } from '@/components/Toast';
@@ -149,9 +150,7 @@ export default function ProjectDashboard() {
       </View>
 
       {isLoading ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={colors.primary} />
-        </View>
+        <DashboardSkeleton />
       ) : (
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           {/* progress */}
@@ -401,6 +400,28 @@ function ShotTile({
   );
 }
 
+// Layout-faithful placeholder while the dashboard loads — steadier than a lone
+// spinner and it makes the wait feel shorter on slow connections.
+function DashboardSkeleton() {
+  return (
+    <View style={styles.content}>
+      <Skeleton height={74} borderRadius={radius.lg} />
+      <Skeleton height={104} borderRadius={radius.lg} />
+      <Skeleton height={56} borderRadius={radius.md} />
+      <View style={styles.actionRow}>
+        <Skeleton height={92} borderRadius={radius.lg} style={styles.skFlex} />
+        <Skeleton height={92} borderRadius={radius.lg} style={styles.skFlex} />
+      </View>
+      <Skeleton width="42%" height={12} />
+      <View style={styles.grid}>
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} aspectRatio={1} borderRadius={radius.md} style={styles.skTile} />
+        ))}
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   header: {
@@ -412,7 +433,6 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.hairline,
   },
   title: { flex: 1, textAlign: 'center' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   content: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xxxl },
   progressCard: {
     backgroundColor: colors.surface,
@@ -440,6 +460,8 @@ const styles = StyleSheet.create({
   },
   group: { gap: spacing.sm },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  skFlex: { flex: 1 },
+  skTile: { width: '31%' },
   tile: { width: '31%', gap: 4 },
   tileThumb: {
     aspectRatio: 1,
