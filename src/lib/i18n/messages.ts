@@ -1,0 +1,246 @@
+// App copy in every supported language. English is the source of truth and the
+// fallback; `fr` and `ar` are typed against its keys so a missing translation is
+// a compile error, never a silent gap.
+//
+// ⚠️ Arabic is Modern Standard Arabic written by tooling — have a native speaker
+// review before the Algeria launch. Brand name "CarStudio" is intentionally kept
+// in Latin across all languages.
+
+export type Locale = 'en' | 'fr' | 'ar';
+
+export const LOCALES: Locale[] = ['en', 'fr', 'ar'];
+export const RTL_LOCALES: Locale[] = ['ar'];
+
+// Shown in the language switcher — each in its own script (endonyms).
+export const LOCALE_LABEL: Record<Locale, string> = {
+  en: 'English',
+  fr: 'Français',
+  ar: 'العربية',
+};
+
+const en = {
+  'common.on': 'On',
+  'common.off': 'Off',
+  'common.cancel': 'Cancel',
+  'common.tryAgain': 'Please try again.',
+
+  'tabs.projects': 'Projects',
+  'tabs.settings': 'Settings',
+
+  'auth.tagline': 'Studio-quality car photos, right on your phone.',
+  'auth.email': 'EMAIL',
+  'auth.password': 'PASSWORD',
+  'auth.signIn': 'Sign in',
+  'auth.noAccount': 'No account?',
+  'auth.createOne': 'Create one',
+  'auth.missingInfo': 'Missing info',
+  'auth.enterEmailPassword': 'Enter your email and password.',
+  'auth.signInFailed': 'Sign in failed',
+  'auth.createAccountTitle': 'Create your account',
+  'auth.createAccountSub': 'Save and sync your car photo projects.',
+  'auth.nameOptional': 'NAME (OPTIONAL)',
+  'auth.namePlaceholder': 'Your name',
+  'auth.passwordMin': 'At least 6 characters',
+  'auth.createAccount': 'Create account',
+  'auth.haveAccount': 'Already have an account?',
+  'auth.enterEmailPasswordSignup': 'Enter your email and a password.',
+  'auth.weakPassword': 'Weak password',
+  'auth.useAtLeast6': 'Use at least 6 characters.',
+  'auth.confirmEmailTitle': 'Confirm your email',
+  'auth.confirmEmailBody': 'Account created. Check your inbox to confirm your email, then sign in.',
+  'auth.signUpFailed': 'Sign up failed',
+
+  'new.title': 'New car',
+  'new.sub': 'Name it, then shoot the guided set (exterior, wheels, interior, engine…).',
+  'new.car': 'CAR',
+  'new.createCapture': 'Create & capture',
+  'new.couldNotCreate': 'Could not create',
+
+  'notFound.title': 'Page not found',
+  'notFound.subtitle': "This link doesn't match anything in CarStudio.",
+
+  'settings.title': 'Settings',
+  'settings.account': 'Account',
+  'settings.email': 'Email',
+  'settings.language': 'Language',
+  'settings.capture': 'Capture',
+  'settings.fastMode': 'Fast mode',
+  'settings.fastModeHint': 'Shoot and auto-advance — no review between shots',
+  'settings.grid': 'Grid',
+  'settings.gridHint': 'Rule-of-thirds overlay in the viewfinder',
+  'settings.level': 'Level guide',
+  'settings.levelHint': 'Live horizon line — turns green when straight',
+  'settings.watermark': 'Watermark',
+  'settings.watermarkField': 'Phone or dealer name',
+  'settings.watermarkToggle': 'Stamp it on every photo',
+  'settings.posLeft': 'Left',
+  'settings.posCenter': 'Center',
+  'settings.posRight': 'Right',
+  'settings.watermarkNote':
+    'Protects your photos from being reused on Ouedkniss or Facebook. Applies to exports and shared links.',
+  'settings.bgRemoval': 'Background removal',
+  'settings.engine': 'Engine',
+  'settings.bgRemovalNote':
+    'Background removal runs entirely on your device — offline and free, with no per-image cost.',
+  'settings.about': 'About',
+  'settings.app': 'App',
+  'settings.version': 'Version',
+  'settings.signOut': 'Sign out',
+  'settings.signOutConfirm': 'Are you sure you want to sign out?',
+  'settings.signOutFailed': 'Sign out failed',
+  'settings.restartTitle': 'Restart needed',
+  'settings.restartBody': 'Close and reopen CarStudio to apply the new text direction.',
+} as const;
+
+export type MessageKey = keyof typeof en;
+
+const fr: Record<MessageKey, string> = {
+  'common.on': 'Activé',
+  'common.off': 'Désactivé',
+  'common.cancel': 'Annuler',
+  'common.tryAgain': 'Veuillez réessayer.',
+
+  'tabs.projects': 'Projets',
+  'tabs.settings': 'Paramètres',
+
+  'auth.tagline': 'Des photos de voiture qualité studio, directement sur votre téléphone.',
+  'auth.email': 'E-MAIL',
+  'auth.password': 'MOT DE PASSE',
+  'auth.signIn': 'Se connecter',
+  'auth.noAccount': 'Pas de compte ?',
+  'auth.createOne': 'Créer un compte',
+  'auth.missingInfo': 'Informations manquantes',
+  'auth.enterEmailPassword': 'Saisissez votre e-mail et votre mot de passe.',
+  'auth.signInFailed': 'Échec de la connexion',
+  'auth.createAccountTitle': 'Créez votre compte',
+  'auth.createAccountSub': 'Enregistrez et synchronisez vos projets photo.',
+  'auth.nameOptional': 'NOM (FACULTATIF)',
+  'auth.namePlaceholder': 'Votre nom',
+  'auth.passwordMin': 'Au moins 6 caractères',
+  'auth.createAccount': 'Créer le compte',
+  'auth.haveAccount': 'Vous avez déjà un compte ?',
+  'auth.enterEmailPasswordSignup': 'Saisissez votre e-mail et un mot de passe.',
+  'auth.weakPassword': 'Mot de passe faible',
+  'auth.useAtLeast6': 'Utilisez au moins 6 caractères.',
+  'auth.confirmEmailTitle': 'Confirmez votre e-mail',
+  'auth.confirmEmailBody':
+    'Compte créé. Vérifiez votre boîte mail pour confirmer votre e-mail, puis connectez-vous.',
+  'auth.signUpFailed': "Échec de l'inscription",
+
+  'new.title': 'Nouvelle voiture',
+  'new.sub': 'Nommez-la, puis photographiez la série guidée (extérieur, pneus, intérieur, moteur…).',
+  'new.car': 'VOITURE',
+  'new.createCapture': 'Créer et photographier',
+  'new.couldNotCreate': 'Création impossible',
+
+  'notFound.title': 'Page introuvable',
+  'notFound.subtitle': 'Ce lien ne correspond à rien dans CarStudio.',
+
+  'settings.title': 'Paramètres',
+  'settings.account': 'Compte',
+  'settings.email': 'E-mail',
+  'settings.language': 'Langue',
+  'settings.capture': 'Prise de vue',
+  'settings.fastMode': 'Mode rapide',
+  'settings.fastModeHint': 'Photographiez et passez automatiquement — sans révision entre les prises',
+  'settings.grid': 'Grille',
+  'settings.gridHint': 'Grille des tiers dans le viseur',
+  'settings.level': 'Guide de niveau',
+  'settings.levelHint': "Ligne d'horizon en direct — devient verte une fois droite",
+  'settings.watermark': 'Filigrane',
+  'settings.watermarkField': 'Téléphone ou nom du vendeur',
+  'settings.watermarkToggle': "L'apposer sur chaque photo",
+  'settings.posLeft': 'Gauche',
+  'settings.posCenter': 'Centre',
+  'settings.posRight': 'Droite',
+  'settings.watermarkNote':
+    'Protège vos photos contre la réutilisation sur Ouedkniss ou Facebook. S’applique aux exports et aux liens partagés.',
+  'settings.bgRemoval': 'Détourage',
+  'settings.engine': 'Moteur',
+  'settings.bgRemovalNote':
+    'Le détourage s’exécute entièrement sur votre appareil — hors ligne et gratuit, sans coût par image.',
+  'settings.about': 'À propos',
+  'settings.app': 'Application',
+  'settings.version': 'Version',
+  'settings.signOut': 'Se déconnecter',
+  'settings.signOutConfirm': 'Voulez-vous vraiment vous déconnecter ?',
+  'settings.signOutFailed': 'Échec de la déconnexion',
+  'settings.restartTitle': 'Redémarrage nécessaire',
+  'settings.restartBody': 'Fermez et rouvrez CarStudio pour appliquer la nouvelle direction du texte.',
+};
+
+const ar: Record<MessageKey, string> = {
+  'common.on': 'مُفعّل',
+  'common.off': 'مُعطّل',
+  'common.cancel': 'إلغاء',
+  'common.tryAgain': 'يُرجى المحاولة مرة أخرى.',
+
+  'tabs.projects': 'المشاريع',
+  'tabs.settings': 'الإعدادات',
+
+  'auth.tagline': 'صور سيارات بجودة الاستوديو، مباشرةً على هاتفك.',
+  'auth.email': 'البريد الإلكتروني',
+  'auth.password': 'كلمة المرور',
+  'auth.signIn': 'تسجيل الدخول',
+  'auth.noAccount': 'ليس لديك حساب؟',
+  'auth.createOne': 'أنشئ حسابًا',
+  'auth.missingInfo': 'معلومات ناقصة',
+  'auth.enterEmailPassword': 'أدخل بريدك الإلكتروني وكلمة المرور.',
+  'auth.signInFailed': 'فشل تسجيل الدخول',
+  'auth.createAccountTitle': 'أنشئ حسابك',
+  'auth.createAccountSub': 'احفظ مشاريع صور سياراتك وزامنها.',
+  'auth.nameOptional': 'الاسم (اختياري)',
+  'auth.namePlaceholder': 'اسمك',
+  'auth.passwordMin': '6 أحرف على الأقل',
+  'auth.createAccount': 'إنشاء الحساب',
+  'auth.haveAccount': 'لديك حساب بالفعل؟',
+  'auth.enterEmailPasswordSignup': 'أدخل بريدك الإلكتروني وكلمة مرور.',
+  'auth.weakPassword': 'كلمة مرور ضعيفة',
+  'auth.useAtLeast6': 'استخدم 6 أحرف على الأقل.',
+  'auth.confirmEmailTitle': 'أكّد بريدك الإلكتروني',
+  'auth.confirmEmailBody': 'تم إنشاء الحساب. تحقّق من بريدك لتأكيده، ثم سجّل الدخول.',
+  'auth.signUpFailed': 'فشل إنشاء الحساب',
+
+  'new.title': 'سيارة جديدة',
+  'new.sub': 'سمِّها، ثم التقط المجموعة الموجَّهة (الخارج، الإطارات، الداخل، المحرك…).',
+  'new.car': 'السيارة',
+  'new.createCapture': 'إنشاء والتقاط',
+  'new.couldNotCreate': 'تعذّر الإنشاء',
+
+  'notFound.title': 'الصفحة غير موجودة',
+  'notFound.subtitle': 'هذا الرابط لا يطابق أي شيء في CarStudio.',
+
+  'settings.title': 'الإعدادات',
+  'settings.account': 'الحساب',
+  'settings.email': 'البريد الإلكتروني',
+  'settings.language': 'اللغة',
+  'settings.capture': 'التصوير',
+  'settings.fastMode': 'الوضع السريع',
+  'settings.fastModeHint': 'التقط وانتقل تلقائيًا — دون مراجعة بين اللقطات',
+  'settings.grid': 'الشبكة',
+  'settings.gridHint': 'شبكة الأثلاث في عدسة الكاميرا',
+  'settings.level': 'دليل الاستواء',
+  'settings.levelHint': 'خط أفق مباشر — يتحوّل إلى الأخضر عند الاستواء',
+  'settings.watermark': 'العلامة المائية',
+  'settings.watermarkField': 'رقم الهاتف أو اسم البائع',
+  'settings.watermarkToggle': 'اطبعها على كل صورة',
+  'settings.posLeft': 'يسار',
+  'settings.posCenter': 'وسط',
+  'settings.posRight': 'يمين',
+  'settings.watermarkNote':
+    'يحمي صورك من إعادة استخدامها على Ouedkniss أو Facebook. يسري على التصدير والروابط المشتركة.',
+  'settings.bgRemoval': 'إزالة الخلفية',
+  'settings.engine': 'المحرك',
+  'settings.bgRemovalNote':
+    'تتم إزالة الخلفية بالكامل على جهازك — دون إنترنت ومجانًا، بلا تكلفة لكل صورة.',
+  'settings.about': 'حول التطبيق',
+  'settings.app': 'التطبيق',
+  'settings.version': 'الإصدار',
+  'settings.signOut': 'تسجيل الخروج',
+  'settings.signOutConfirm': 'هل تريد بالتأكيد تسجيل الخروج؟',
+  'settings.signOutFailed': 'فشل تسجيل الخروج',
+  'settings.restartTitle': 'يلزم إعادة التشغيل',
+  'settings.restartBody': 'أغلق تطبيق CarStudio وأعد فتحه لتطبيق اتجاه النص الجديد.',
+};
+
+export const messages: Record<Locale, Record<MessageKey, string>> = { en, fr, ar };
