@@ -34,7 +34,7 @@ function Swatch({ bg, active, onPress }: { bg: BackgroundPreset; active: boolean
         ]}
       >
         {bg.kind === 'transparent' ? (
-          <Text variant="body" color="#9A9AA5">
+          <Text variant="body" color={colors.textFaint}>
             ▨
           </Text>
         ) : null}
@@ -73,5 +73,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   swatchActive: { borderColor: colors.primary },
-  swatchTransparent: { backgroundColor: '#FFFFFF' },
+  swatchTransparent: { backgroundColor: colors.elevated },
 });
