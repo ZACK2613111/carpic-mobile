@@ -6,8 +6,10 @@
     <title>CarStudio</title>
     <style>
       :root {
-        --bg: #0a0a0f; --surface: #15151f; --surfaceAlt: #1c1c28; --border: #2e2e3c;
-        --text: #f6f7fb; --muted: #a2a3b2; --primary: #4b7bff;
+        /* Light "White & Light" brand — mirrors the app's theme.ts */
+        --bg: #ffffff; --surface: #f6f7f9; --surfaceAlt: #eef0f4; --border: #e4e7ee;
+        --text: #14151a; --muted: #5b6070; --primary: #3e63dd;
+        --ins-high: #e5484d; --ins-medium: #e08600; --ins-low: #e0a400;
       }
       * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
       html, body { margin: 0; background: var(--bg); color: var(--text);
@@ -29,9 +31,9 @@
       .cond-area { font-size: 12px; color: var(--muted); }
       .cond-desc { font-size: 13px; color: var(--muted); margin-top: 2px; }
       .sevpill { flex: none; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
-      .sevpill.sev-high { background: rgba(255,90,90,.16); color: #ff5a5a; }
-      .sevpill.sev-medium { background: rgba(255,168,58,.16); color: #ffa83a; }
-      .sevpill.sev-low { background: rgba(255,210,58,.16); color: #ffd23a; }
+      .sevpill.sev-high { background: rgba(229,72,77,.12); color: var(--ins-high); }
+      .sevpill.sev-medium { background: rgba(224,134,0,.12); color: var(--ins-medium); }
+      .sevpill.sev-low { background: rgba(224,164,0,.14); color: var(--ins-low); }
 
       /* stage (360 + lightbox share this) */
       .stage { position: relative; width: 100%; aspect-ratio: 4/3; border-radius: 16px; overflow: hidden;
@@ -61,7 +63,7 @@
         border: 2px solid #fff; display: flex; align-items: center; justify-content: center;
         color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,.4); }
       .pop { position: absolute; z-index: 5; max-width: 220px; background: var(--surface); border: 1px solid var(--border);
-        border-radius: 12px; padding: 10px 12px; transform: translate(-50%, calc(-100% - 16px)); box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+        border-radius: 12px; padding: 10px 12px; transform: translate(-50%, calc(-100% - 16px)); box-shadow: 0 8px 24px rgba(26,35,64,.18); }
       .pop h4 { margin: 0 0 4px; font-size: 14px; }
       .pop p { margin: 0; font-size: 13px; color: var(--muted); }
       .pop .sev { font-size: 11px; font-weight: 700; }
@@ -81,7 +83,7 @@
       .lb { position: fixed; inset: 0; background: rgba(0,0,0,.85); display: none; flex-direction: column;
         z-index: 20; padding: 16px; }
       .lb.open { display: flex; }
-      .lb .close { align-self: flex-end; background: var(--surface); border: 1px solid var(--border); color: #fff;
+      .lb .close { align-self: flex-end; background: var(--surface); border: 1px solid var(--border); color: var(--text);
         width: 40px; height: 40px; border-radius: 12px; font-size: 20px; cursor: pointer; }
       .lb .stage { flex: 1; margin: 12px 0; aspect-ratio: auto; }
       .lb .lbtitle { color: #fff; font-weight: 700; }
@@ -95,7 +97,7 @@
 
     <script>
       var BG = {
-        transparent: 'repeating-conic-gradient(#c9c9d1 0 25%, #9a9aa5 0 50%) 0 0 / 28px 28px',
+        transparent: 'repeating-conic-gradient(#ffffff 0 25%, #e6e9f0 0 50%) 0 0 / 28px 28px',
         white: '#ffffff', silver: '#d7dbe0', black: '#0b0b0f',
         'grad-ocean': 'linear-gradient(#1e3c72,#2a5298)',
         'grad-sunset': 'linear-gradient(#f7971e,#ffd200)',
@@ -137,8 +139,8 @@
         stage.appendChild(el('div', 'wm ' + pos, WATERMARK.text));
       }
       function pinColor(h) {
-        if (h.kind === 'marketing') return '#4b7bff';
-        return h.severity === 'high' ? '#ff5a5a' : h.severity === 'low' ? '#ffd23a' : '#ffa83a';
+        if (h.kind === 'marketing') return '#3e63dd';
+        return h.severity === 'high' ? '#e5484d' : h.severity === 'low' ? '#e0a400' : '#e08600';
       }
       // Uses textContent (never innerHTML) so manifest strings can't inject markup/scripts.
       function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
@@ -305,7 +307,7 @@
         var list = el('div', 'condition');
         items.forEach(function (it) {
           var row = el('div', 'cond-item');
-          var dot = el('span', 'cond-dot'); dot.style.background = '#4b7bff'; row.appendChild(dot);
+          var dot = el('span', 'cond-dot'); dot.style.background = '#3e63dd'; row.appendChild(dot);
           var body = el('div', 'cond-body');
           var head = el('div', 'cond-head');
           head.appendChild(el('span', 'cond-title', it.h.title || 'Feature'));
