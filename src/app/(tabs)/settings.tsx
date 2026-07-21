@@ -123,12 +123,21 @@ export default function SettingsScreen() {
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  // Hairline-separate stacked rows so a grouped card reads as a list, not a blob.
+  const items = React.Children.toArray(children);
   return (
     <View style={styles.section}>
       <Text variant="label" muted>
         {title.toUpperCase()}
       </Text>
-      <View style={styles.card}>{children}</View>
+      <View style={styles.card}>
+        {items.map((child, i) => (
+          <React.Fragment key={i}>
+            {i > 0 ? <View style={styles.separator} /> : null}
+            {child}
+          </React.Fragment>
+        ))}
+      </View>
     </View>
   );
 }
@@ -188,6 +197,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   content: { padding: spacing.lg, gap: spacing.xl, paddingBottom: spacing.xxxl },
   section: { gap: spacing.sm },
+  separator: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border },
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
