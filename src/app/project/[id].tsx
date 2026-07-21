@@ -370,7 +370,13 @@ function ShotTile({
   const displayUri = url ?? (!shot?.captured ? pendingUri : null);
   const isPending = !shot?.captured && Boolean(pendingUri);
   return (
-    <PressableScale style={styles.tile} onPress={onPress} haptic="selection">
+    <PressableScale
+      style={styles.tile}
+      onPress={onPress}
+      haptic="selection"
+      accessibilityRole="button"
+      accessibilityLabel={`${slot.label} — ${shot?.captured ? 'captured' : isPending ? 'uploading' : 'not captured'}`}
+    >
       <View style={styles.tileThumb}>
         {displayUri ? (
           <Image

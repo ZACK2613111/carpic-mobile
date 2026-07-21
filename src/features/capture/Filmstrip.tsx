@@ -65,7 +65,13 @@ const StripCell = memo(function StripCell({
   const isPending = !shot?.captured && Boolean(pendingUri);
 
   return (
-    <PressableScale style={[styles.cell, active && styles.cellActive]} onPress={onPress} haptic="selection">
+    <PressableScale
+      style={[styles.cell, active && styles.cellActive]}
+      onPress={onPress}
+      haptic="selection"
+      accessibilityRole="button"
+      accessibilityLabel={`${slot.label}, ${shot?.captured ? 'captured' : isPending ? 'uploading' : 'empty'}`}
+    >
       {displayUri ? (
         <Image
           source={{ uri: displayUri }}

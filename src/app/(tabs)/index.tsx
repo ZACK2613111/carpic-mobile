@@ -144,7 +144,13 @@ export default function ProjectsScreen() {
         />
       )}
 
-      <PressableScale style={[styles.fab, shadow.md]} onPress={() => router.push('/new')} haptic="medium">
+      <PressableScale
+        style={[styles.fab, shadow.md]}
+        onPress={() => router.push('/new')}
+        haptic="medium"
+        accessibilityRole="button"
+        accessibilityLabel="New project"
+      >
         <Icon name="plus" size={24} color="#FFFFFF" />
       </PressableScale>
     </SafeAreaView>
@@ -166,7 +172,15 @@ function ProjectCard({
   const updated = relativeTime(project.updated_at);
 
   return (
-    <PressableScale style={styles.card} onPress={onPress} onPressIn={onPressIn} onLongPress={onLongPress}>
+    <PressableScale
+      style={styles.card}
+      onPress={onPress}
+      onPressIn={onPressIn}
+      onLongPress={onLongPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${project.name}${isPublished(project) ? ', published' : ''}`}
+      accessibilityHint="Long press to delete"
+    >
       <View style={styles.thumb}>
         {thumbUrl ? (
           <>
