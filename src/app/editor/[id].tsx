@@ -23,6 +23,7 @@ import { CoachMarks } from '@/features/editor/CoachMarks';
 import { EngineAudio } from '@/features/editor/EngineAudio';
 import { useEditorStore } from '@/features/editor/editorStore';
 import { shadowEnabled } from '@/features/editor/groundShadow';
+import { pickAndUploadHotspotPhoto } from '@/features/editor/hotspotPhoto';
 import { HotspotSheet } from '@/features/editor/HotspotSheet';
 import { NudgePad } from '@/features/editor/NudgePad';
 import { defaultPlate } from '@/features/editor/plateMask';
@@ -365,6 +366,11 @@ export default function EditorScreen() {
       <HotspotSheet
         hotspot={selected}
         onChange={(patch) => selected && updateHotspot(selected.id, patch)}
+        onPickPhoto={
+          selected && shot
+            ? () => pickAndUploadHotspotPhoto(shot.project_id, `${shot.slot}-${selected.id}`)
+            : undefined
+        }
         onDelete={() => {
           if (selected) {
             haptics.medium();

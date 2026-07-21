@@ -19,6 +19,7 @@ import { BackgroundStrip } from '@/features/editor/BackgroundStrip';
 import { shadowEnabled } from '@/features/editor/groundShadow';
 import { HotspotSheet } from '@/features/editor/HotspotSheet';
 import { createHotspot } from '@/features/editor/hotspots';
+import { pickAndUploadHotspotPhoto } from '@/features/editor/hotspotPhoto';
 import type { EditorMode, SpinHotspot } from '@/features/projects/types';
 import { useProject } from '@/features/projects/useProjects';
 import { getSpinFrameUrls, saveSpin, uploadSpinFrame } from '@/features/spin/spin.api';
@@ -300,6 +301,7 @@ export default function SpinScreen() {
         onChange={(patch) =>
           selected && setHotspots((hs) => hs.map((h) => (h.id === selected.id ? { ...h, ...patch } : h)))
         }
+        onPickPhoto={selected ? () => pickAndUploadHotspotPhoto(id, `spin-${selected.id}`) : undefined}
         onDelete={() => {
           if (selected) {
             haptics.medium();
