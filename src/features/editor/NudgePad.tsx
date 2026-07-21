@@ -2,7 +2,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { Icon } from '@/components/Icon';
 import { IconButton } from '@/components/IconButton';
-import { colors, radius, spacing } from '@/theme';
+import { colors, radius, shadow, spacing } from '@/theme';
 
 /** One tap ≈ a hair's width — fine positioning for the selected hotspot. */
 const NUDGE = 0.004;
@@ -28,7 +28,15 @@ export function NudgePad({ onNudge }: { onNudge: (dx: number, dy: number) => voi
 }
 
 const styles = StyleSheet.create({
-  pad: { alignItems: 'center', backgroundColor: `${colors.bg}CC`, borderRadius: radius.md, padding: spacing.xs },
+  pad: {
+    alignItems: 'center',
+    backgroundColor: colors.elevated,
+    borderRadius: radius.md,
+    padding: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadow.md,
+  },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   center: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
 });
