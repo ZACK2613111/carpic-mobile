@@ -67,6 +67,8 @@
       .pop h4 { margin: 0 0 4px; font-size: 14px; }
       .pop p { margin: 0; font-size: 13px; color: var(--muted); }
       .pop .sev { font-size: 11px; font-weight: 700; }
+      .pop img { width: 100%; border-radius: 8px; margin-top: 8px; display: block; }
+      .cond-thumb { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; flex: none; }
 
       /* gallery */
       .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
@@ -167,6 +169,7 @@
             }
             pop.appendChild(el('h4', null, h.title || ''));
             if (h.description) pop.appendChild(el('p', null, h.description));
+            if (h.photoUrl) { var pim = el('img'); pim.src = h.photoUrl; pim.loading = 'lazy'; pop.appendChild(pim); }
             stage.appendChild(pop);
           };
           stage.appendChild(pin);
@@ -273,6 +276,7 @@
           var sev = it.h.severity || 'medium';
           var row = el('div', 'cond-item');
           var dot = el('span', 'cond-dot'); dot.style.background = pinColor(it.h); row.appendChild(dot);
+          if (it.h.photoUrl) { var cth = el('img', 'cond-thumb'); cth.src = it.h.photoUrl; cth.loading = 'lazy'; row.appendChild(cth); }
           var body = el('div', 'cond-body');
           var head = el('div', 'cond-head');
           head.appendChild(el('span', 'cond-title', it.h.title || 'Point'));
@@ -308,6 +312,7 @@
         items.forEach(function (it) {
           var row = el('div', 'cond-item');
           var dot = el('span', 'cond-dot'); dot.style.background = '#3e63dd'; row.appendChild(dot);
+          if (it.h.photoUrl) { var hth = el('img', 'cond-thumb'); hth.src = it.h.photoUrl; hth.loading = 'lazy'; row.appendChild(hth); }
           var body = el('div', 'cond-body');
           var head = el('div', 'cond-head');
           head.appendChild(el('span', 'cond-title', it.h.title || 'Feature'));
