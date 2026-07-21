@@ -156,6 +156,7 @@ export function SpinViewer({
               <Text variant="label" color="#FFFFFF">
                 {num}
               </Text>
+              {h.photoPath ? <View style={styles.photoDot} /> : null}
             </View>
           );
         })}
@@ -232,6 +233,17 @@ const styles = StyleSheet.create({
     borderWidth: 2.5,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  photoDot: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: 'rgba(17,18,26,0.25)',
   },
   hint: {
     position: 'absolute',

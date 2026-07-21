@@ -62,6 +62,8 @@
       .pin { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%;
         border: 2px solid #fff; display: flex; align-items: center; justify-content: center;
         color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,.4); }
+      .pin.has-photo::after { content: ''; position: absolute; top: -3px; right: -3px; width: 11px; height: 11px;
+        border-radius: 50%; background: #fff; border: 2px solid rgba(17,18,26,.28); box-sizing: border-box; }
       .pop { position: absolute; z-index: 5; max-width: 220px; background: var(--surface); border: 1px solid var(--border);
         border-radius: 12px; padding: 10px 12px; transform: translate(-50%, calc(-100% - 16px)); box-shadow: 0 8px 24px rgba(26,35,64,.18); }
       .pop h4 { margin: 0 0 4px; font-size: 14px; }
@@ -150,7 +152,7 @@
       // Renders hotspot pins into a stage element for a given set of hotspots.
       function renderPins(stage, hotspots) {
         (hotspots || []).forEach(function (h, i) {
-          var pin = el('div', 'pin');
+          var pin = el('div', 'pin' + (h.photoUrl ? ' has-photo' : ''));
           pin.style.left = (h.x * 100) + '%';
           pin.style.top = (h.y * 100) + '%';
           pin.style.background = pinColor(h);

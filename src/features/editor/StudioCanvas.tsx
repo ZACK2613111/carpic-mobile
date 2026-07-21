@@ -306,6 +306,12 @@ function PinLayer({
       {font ? (
         <SkiaText x={cx - approxWidth / 2} y={cy + FONT_SIZE * 0.36} text={label} font={font} color="#FFFFFF" />
       ) : null}
+      {h.photoPath ? (
+        <Group>
+          <Circle cx={cx + r * 0.72} cy={cy - r * 0.72} r={5} color="#FFFFFF" />
+          <Circle cx={cx + r * 0.72} cy={cy - r * 0.72} r={2.6} color={color} />
+        </Group>
+      ) : null}
     </Group>
   );
 }
