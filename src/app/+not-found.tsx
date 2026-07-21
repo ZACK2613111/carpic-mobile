@@ -1,32 +1,9 @@
-import { router } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { NotFound } from '@/components/NotFound';
 
-import { Button } from '@/components/Button';
-import { Text } from '@/components/Text';
-import { colors, spacing } from '@/theme';
-
-// Catch-all for bad deep links (carstudio://…) and stale routes.
+// Catch-all for bad deep links (carstudio://…) and stale routes — reuses the
+// shared dead-end so every "missing" screen looks and behaves the same.
 export default function NotFoundScreen() {
   return (
-    <View style={styles.wrap}>
-      <Text variant="heading" center>
-        Page not found
-      </Text>
-      <Text variant="body" muted center>
-        This link doesn&apos;t match anything in CarStudio.
-      </Text>
-      <Button title="Go home" onPress={() => router.replace('/')} />
-    </View>
+    <NotFound title="Page not found" subtitle="This link doesn't match anything in CarStudio." />
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: {
-    flex: 1,
-    backgroundColor: colors.bg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.xl,
-    gap: spacing.md,
-  },
-});
