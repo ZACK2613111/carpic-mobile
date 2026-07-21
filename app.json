@@ -97,7 +97,8 @@
           "microphonePermission": "CarStudio records the engine sound for your car listing."
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true,
