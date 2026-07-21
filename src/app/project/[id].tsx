@@ -16,8 +16,8 @@ import { Text } from '@/components/Text';
 import { TextField } from '@/components/TextField';
 import { useToast } from '@/components/Toast';
 import { captureLinkUrl, getOrCreateCaptureLink } from '@/features/capture-links/captureLinks.api';
-import { getSlot, GROUP_LABELS, GROUP_ORDER, SHOT_TEMPLATE, type ShotSlot } from '@/features/capture/shotTemplate';
-import { SEVERITY_LABEL, summarizeInspection, type HotspotGroup } from '@/features/inspection/report';
+import { getSlot, GROUP_LABELS, GROUP_ORDER, localizedLabel, SHOT_TEMPLATE, type ShotSlot } from '@/features/capture/shotTemplate';
+import { summarizeInspection, type HotspotGroup } from '@/features/inspection/report';
 import { publishProject } from '@/features/publish/publish';
 import type { Shot } from '@/features/shots/types';
 import { shotKeys, useShots, useShotSignedUrl } from '@/features/shots/useShots';
@@ -25,6 +25,7 @@ import { usePendingUploads } from '@/features/uploads/usePendingUploads';
 import type { ShotUploadPayload } from '@/features/uploads/uploads';
 import { useProject, useUpdateProject } from '@/features/projects/useProjects';
 import { decodeVin, normalizeVin, vinSummary } from '@/features/vehicle/vin';
+import { useLocale, useT } from '@/lib/i18n';
 import { uploadFileUri, type UploadTask } from '@/lib/uploadQueue';
 import { useRouteId } from '@/lib/useRouteId';
 import { colors, radius, severityColor, shadow, spacing } from '@/theme';
@@ -33,6 +34,8 @@ export default function ProjectDashboard() {
   const id = useRouteId();
   const router = useRouter();
   const toast = useToast();
+  const t = useT();
+  const locale = useLocale();
   const { data: project, isError: projectError, refetch: refetchProject } = useProject(id ?? undefined);
   const { data: shots, isLoading } = useShots(id ?? undefined);
   const qc = useQueryClient();
@@ -59,8 +62,8 @@ export default function ProjectDashboard() {
   const pendingUploads = usePendingUploads(id ?? undefined);
   const pendingBySlot = useMemo(() => {
     const map: Record<string, UploadTask> = {};
-    pendingUploads.forEach((t) => {
-      if (t.kind === 'shot') map[(t.payload as ShotUploadPayload).slot] = t;
+    pendingUploads.forEach((tk) => {
+      if (tk.kind === 'shot') map[(tk.payload as ShotUploadPayload).slot] = tk;
     });
     return map;
   }, [pendingUploads]);
@@ -94,15 +97,15 @@ export default function ProjectDashboard() {
       const url = captureLinkUrl(link);
       await Share.share({ message: url, url });
     } catch (e) {
-      toast.show(e instanceof Error ? e.message : 'Could not create the link', 'error');
+      toast.show(e instanceof Error ? e.message : t('project.linkFailed'), 'error');
     } finally {
       setRequesting(false);
     }
-  }, [id, requesting, toast]);
+  }, [id, requesting, toast, t]);
   const doPublish = useCallback(async () => {
     if (!project) return;
     if (capturedCount === 0) {
-      toast.show('Capture some shots first', 'info');
+      toast.show(t('project.captureFirst'), 'info');
       return;
     }
     setPublishing('Preparing');
@@ -110,12 +113,12 @@ export default function ProjectDashboard() {
       const link = await publishProject(project, shots ?? [], (label) => setPublishing(label));
       setPublishing(null);
       await Share.share({ message: link, url: link });
-      toast.show('Published — link ready to share', 'success');
+      toast.show(t('project.publishedToast'), 'success');
     } catch (e) {
       setPublishing(null);
-      toast.show(e instanceof Error ? e.message : 'Publish failed', 'error');
+      toast.show(e instanceof Error ? e.message : t('project.publishFailed'), 'error');
     }
-  }, [project, shots, capturedCount, toast]);
+  }, [project, shots, capturedCount, toast, t]);
 
   const openSlot = (slot: ShotSlot) => {
     const shot = bySlot[slot.id];
@@ -123,7 +126,7 @@ export default function ProjectDashboard() {
       router.push({ pathname: '/editor/[id]', params: { id: shot.id } });
     } else if (pendingBySlot[slot.id]) {
       // Captured but not synced yet — the editor needs the DB row to exist.
-      toast.show('Photo is still syncing — editing unlocks once it uploads', 'info');
+      toast.show(t('project.syncing'), 'info');
     } else {
       router.push({ pathname: '/capture/[id]', params: { id, start: slot.id } });
     }
@@ -132,8 +135,8 @@ export default function ProjectDashboard() {
   if (!id || projectError) {
     return (
       <NotFound
-        title="Project unavailable"
-        subtitle={projectError ? "This project couldn't be loaded." : 'This project no longer exists.'}
+        title={t('project.unavailableTitle')}
+        subtitle={projectError ? t('project.loadFailed') : t('project.gone')}
         onRetry={projectError ? () => void refetchProject() : undefined}
       />
     );
@@ -142,9 +145,9 @@ export default function ProjectDashboard() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
-        <IconButton name="back" variant="ghost" accessibilityLabel="Back" onPress={() => router.back()} />
+        <IconButton name="back" variant="ghost" accessibilityLabel={t('common.back')} onPress={() => router.back()} />
         <Text variant="heading" numberOfLines={1} style={styles.title}>
-          {project?.name ?? 'Project'}
+          {project?.name ?? t('project.fallbackName')}
         </Text>
         <View style={{ width: 44 }} />
       </View>
@@ -156,9 +159,7 @@ export default function ProjectDashboard() {
           {/* progress */}
           <View style={styles.progressCard}>
             <View style={styles.progressTop}>
-              <Text variant="bodyStrong">
-                {capturedCount} / {total} shots
-              </Text>
+              <Text variant="bodyStrong">{t('project.shotsCount', { done: capturedCount, total })}</Text>
               <Text variant="caption" muted>
                 {pct}%
               </Text>
@@ -170,8 +171,7 @@ export default function ProjectDashboard() {
               <View style={styles.pendingRow}>
                 <ActivityIndicator size="small" color={colors.primary} />
                 <Text variant="caption" muted>
-                  {pendingUploads.length} photo{pendingUploads.length === 1 ? '' : 's'} waiting to upload — saved
-                  locally, will sync automatically
+                  {t('project.pending', { n: pendingUploads.length })}
                 </Text>
               </View>
             ) : null}
@@ -184,9 +184,9 @@ export default function ProjectDashboard() {
           {inspection.inspectionCount > 0 ? (
             <View style={styles.vinCard}>
               <View style={styles.vinHeader}>
-                <Text variant="bodyStrong">Condition</Text>
+                <Text variant="bodyStrong">{t('project.condition')}</Text>
                 <Text variant="caption" muted style={styles.conditionCount}>
-                  {inspection.inspectionCount} point{inspection.inspectionCount === 1 ? '' : 's'}
+                  {t('project.conditionPoints', { n: inspection.inspectionCount })}
                 </Text>
               </View>
               <View style={styles.vinChips}>
@@ -195,7 +195,8 @@ export default function ProjectDashboard() {
                     <View key={sev} style={styles.sevChip}>
                       <View style={[styles.sevDot, { backgroundColor: severityColor(sev) }]} />
                       <Text variant="caption">
-                        {inspection.bySeverity[sev]} {SEVERITY_LABEL[sev].toLowerCase()}
+                        {inspection.bySeverity[sev]}{' '}
+                        {t(sev === 'high' ? 'project.sevHigh' : sev === 'medium' ? 'project.sevMedium' : 'project.sevLow')}
                       </Text>
                     </View>
                   ) : null
@@ -203,7 +204,7 @@ export default function ProjectDashboard() {
               </View>
               {inspection.marketingCount > 0 ? (
                 <Text variant="caption" faint>
-                  + {inspection.marketingCount} highlight{inspection.marketingCount === 1 ? '' : 's'}
+                  {t('project.highlights', { n: inspection.marketingCount })}
                 </Text>
               ) : null}
             </View>
@@ -211,7 +212,7 @@ export default function ProjectDashboard() {
 
           {/* primary actions */}
           <Button
-            title="Guided capture"
+            title={t('project.guidedCapture')}
             icon="camera"
             size="lg"
             onPress={() => router.push({ pathname: '/capture/[id]', params: { id } })}
@@ -219,22 +220,22 @@ export default function ProjectDashboard() {
           <View style={styles.actionRow}>
             <ActionTile
               icon="refresh"
-              label="360° spin"
-              hint={project?.spin?.frameCount ? `${project.spin.frameCount} frames` : 'Capture'}
+              label={t('project.spin360')}
+              hint={project?.spin?.frameCount ? t('project.frames', { n: project.spin.frameCount }) : t('project.capture')}
               onPress={() => router.push({ pathname: '/spin/[id]', params: { id } })}
             />
             <ActionTile
               icon="share"
-              label="Publish link"
-              hint={project?.status === 'published' ? 'Re-publish' : 'Share'}
+              label={t('project.publishLink')}
+              hint={project?.status === 'published' ? t('project.rePublish') : t('project.share')}
               onPress={doPublish}
             />
           </View>
           <View style={styles.actionRow}>
             <ActionTile
               icon="camera"
-              label="Request photos"
-              hint={requesting ? 'Preparing…' : 'Owner shoots via link'}
+              label={t('project.requestPhotos')}
+              hint={requesting ? t('project.preparing') : t('project.ownerShoots')}
               onPress={doRequestPhotos}
             />
           </View>
@@ -245,7 +246,7 @@ export default function ProjectDashboard() {
             return (
               <View key={group} style={styles.group}>
                 <Text variant="label" muted>
-                  {GROUP_LABELS[group].label.toUpperCase()} · {GROUP_LABELS[group].labelFr}
+                  {localizedLabel(GROUP_LABELS[group], locale).toUpperCase()}
                 </Text>
                 <View style={styles.grid}>
                   {slots.map((slot) => (
@@ -269,7 +270,7 @@ export default function ProjectDashboard() {
           <ActivityIndicator color={colors.primary} size="large" />
           <Text variant="bodyStrong">{publishing}…</Text>
           <Text variant="caption" muted>
-            Building your shareable link
+            {t('project.buildingLink')}
           </Text>
         </View>
       ) : null}
@@ -279,6 +280,7 @@ export default function ProjectDashboard() {
 
 function VinCard({ projectId, initialVin }: { projectId: string; initialVin: string }) {
   const updateProject = useUpdateProject();
+  const t = useT();
   const [text, setText] = useState(initialVin);
   // Re-seed if the project loads/refetches with a different stored VIN.
   const seeded = useRef(initialVin);
@@ -299,20 +301,20 @@ function VinCard({ projectId, initialVin }: { projectId: string; initialVin: str
   return (
     <View style={styles.vinCard}>
       <View style={styles.vinHeader}>
-        <Text variant="bodyStrong">Vehicle</Text>
+        <Text variant="bodyStrong">{t('project.vehicle')}</Text>
       </View>
       <TextField
         value={text}
         onChangeText={setText}
         onBlur={commit}
-        placeholder="VIN (17 characters, on the windshield)"
+        placeholder={t('project.vinPlaceholder')}
         autoCapitalize="characters"
         autoCorrect={false}
         maxLength={20}
       />
       {info && !info.valid && text.trim().length > 0 ? (
         <Text variant="caption" faint>
-          Keep typing — a VIN is 17 characters.
+          {t('project.vinHint')}
         </Text>
       ) : summary ? (
         <View style={styles.vinChips}>
@@ -322,7 +324,7 @@ function VinCard({ projectId, initialVin }: { projectId: string; initialVin: str
         </View>
       ) : (
         <Text variant="caption" faint>
-          Adds the year, make and origin automatically — no internet needed.
+          {t('project.vinAuto')}
         </Text>
       )}
     </View>
@@ -364,18 +366,22 @@ function ShotTile({
   pendingUri?: string | null;
   onPress: () => void;
 }) {
+  const t = useT();
+  const locale = useLocale();
   const { data: url } = useShotSignedUrl(shot?.captured ? (shot.cutout_path ?? shot.image_path) : null);
   // A queued (not-yet-synced) capture shows its local outbox file so offline
   // work is visible immediately, with an "uploading" badge instead of the check.
   const displayUri = url ?? (!shot?.captured ? pendingUri : null);
   const isPending = !shot?.captured && Boolean(pendingUri);
+  const label = localizedLabel(slot, locale);
+  const state = shot?.captured ? t('project.captured') : isPending ? t('project.uploading') : t('project.notCaptured');
   return (
     <PressableScale
       style={styles.tile}
       onPress={onPress}
       haptic="selection"
       accessibilityRole="button"
-      accessibilityLabel={`${slot.label} — ${shot?.captured ? 'captured' : isPending ? 'uploading' : 'not captured'}`}
+      accessibilityLabel={`${label} — ${state}`}
     >
       <View style={styles.tileThumb}>
         {displayUri ? (
@@ -401,7 +407,7 @@ function ShotTile({
         ) : null}
       </View>
       <Text variant="caption" numberOfLines={1} muted={!shot?.captured && !isPending} center>
-        {slot.label}
+        {label}
       </Text>
     </PressableScale>
   );
