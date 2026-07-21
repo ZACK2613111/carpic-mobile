@@ -12,6 +12,8 @@ export type Hotspot = {
   description?: string;
   /** inspection hotspots only. */
   severity?: Severity;
+  /** optional close-up detail photo — storage path in the private projects bucket. */
+  photoPath?: string;
 };
 
 export type PlateStyle = 'blur' | 'brand';
