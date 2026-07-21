@@ -2,6 +2,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Image } from 'expo-image';
 import { useKeepAwake } from 'expo-keep-awake';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -211,6 +212,8 @@ export default function CaptureScreen() {
 
   return (
     <View style={styles.fill}>
+      {/* Black viewfinder — force light status-bar icons so the clock/battery stay visible. */}
+      <StatusBar style="light" />
       <CameraView
         ref={cameraRef}
         style={StyleSheet.absoluteFill}

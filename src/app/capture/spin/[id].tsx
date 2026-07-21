@@ -1,6 +1,7 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useKeepAwake } from 'expo-keep-awake';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -139,6 +140,8 @@ export default function SpinCaptureScreen() {
 
   return (
     <View style={styles.fill}>
+      {/* Black viewfinder — force light status-bar icons so the clock/battery stay visible. */}
+      <StatusBar style="light" />
       <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
 
       <SafeAreaView style={styles.ui} edges={['top', 'bottom']} pointerEvents="box-none">
