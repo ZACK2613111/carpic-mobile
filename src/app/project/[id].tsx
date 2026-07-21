@@ -385,6 +385,7 @@ function ShotTile({
             contentFit="cover"
             cachePolicy="memory-disk"
             transition={120}
+            recyclingKey={shot?.id ?? slot.id}
           />
         ) : (
           <Icon name="plus" size={18} color={colors.textFaint} />
