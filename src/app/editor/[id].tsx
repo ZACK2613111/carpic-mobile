@@ -38,7 +38,7 @@ import { haptics } from '@/lib/haptics';
 import { useCoachMarks } from '@/lib/useCoachMarks';
 import { useDebouncedAutosave } from '@/lib/useDebouncedAutosave';
 import { useRouteId } from '@/lib/useRouteId';
-import { colors, radius, spacing } from '@/theme';
+import { colors, radius, shadow as elevation, spacing } from '@/theme';
 
 const COACH_KEY = 'editor-coach-v1';
 
@@ -197,7 +197,7 @@ export default function EditorScreen() {
       {/* Header */}
       <View style={styles.header}>
         <IconButton name="back" variant="ghost" accessibilityLabel="Go back" onPress={() => router.back()} />
-        <Text numberOfLines={1} style={styles.name}>
+        <Text variant="heading" numberOfLines={1} style={styles.name}>
           {name || 'Shot'}
         </Text>
         <IconButton
@@ -285,7 +285,7 @@ export default function EditorScreen() {
 
           {originalUri && hotspots.length === 0 && !zoomed && !removing ? (
             <View style={styles.tapHint} pointerEvents="none">
-              <Text variant="caption" style={styles.tapHintText}>
+              <Text variant="caption" muted>
                 Tap the car to add a hotspot
               </Text>
             </View>
@@ -408,8 +408,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
     gap: spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.hairline,
   },
-  name: { flex: 1, color: colors.text, fontSize: 17, fontWeight: '700', textAlign: 'center' },
+  name: { flex: 1, textAlign: 'center' },
   modeRow: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs },
   infoRow: {
     flexDirection: 'row',
@@ -431,14 +433,17 @@ const styles = StyleSheet.create({
   centerOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
   zoomReset: { position: 'absolute', top: spacing.sm, right: spacing.sm },
   nudge: { position: 'absolute', left: spacing.sm, bottom: spacing.sm },
-  tapHint: { position: 'absolute', bottom: spacing.md, alignSelf: 'center' },
-  tapHintText: {
-    color: colors.text,
-    backgroundColor: colors.scrim,
+  tapHint: {
+    position: 'absolute',
+    bottom: spacing.md,
+    alignSelf: 'center',
+    backgroundColor: colors.elevated,
+    borderWidth: 1,
+    borderColor: colors.border,
     paddingHorizontal: spacing.md,
     paddingVertical: 6,
     borderRadius: radius.pill,
-    overflow: 'hidden',
+    ...elevation.sm,
   },
   progress: {
     position: 'absolute',
