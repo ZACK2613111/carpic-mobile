@@ -8,19 +8,21 @@ import { ConfigNotice } from '@/components/ConfigNotice';
 import { Text } from '@/components/Text';
 import { TextField } from '@/components/TextField';
 import { isSupabaseConfigured } from '@/lib/env';
+import { useT } from '@/lib/i18n';
 import { useAuth } from '@/providers/AuthProvider';
 import { colors, radius, spacing } from '@/theme';
 
 export default function SignIn() {
   const { signIn } = useAuth();
   const router = useRouter();
+  const t = useT();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
 
   const onSubmit = async () => {
     if (!email || !password) {
-      Alert.alert('Missing info', 'Enter your email and password.');
+      Alert.alert(t('auth.missingInfo'), t('auth.enterEmailPassword'));
       return;
     }
     setBusy(true);
@@ -28,7 +30,7 @@ export default function SignIn() {
       await signIn(email.trim(), password);
       router.replace('/');
     } catch (e) {
-      Alert.alert('Sign in failed', e instanceof Error ? e.message : 'Please try again.');
+      Alert.alert(t('auth.signInFailed'), e instanceof Error ? e.message : t('common.tryAgain'));
     } finally {
       setBusy(false);
     }
@@ -50,7 +52,7 @@ export default function SignIn() {
             </View>
             <Text variant="title">CarStudio</Text>
             <Text variant="body" muted center>
-              Studio-quality car photos, right on your phone.
+              {t('auth.tagline')}
             </Text>
           </View>
 
@@ -58,7 +60,7 @@ export default function SignIn() {
 
           <View style={styles.form}>
             <TextField
-              label="EMAIL"
+              label={t('auth.email')}
               leftIcon="mail"
               value={email}
               onChangeText={setEmail}
@@ -68,23 +70,23 @@ export default function SignIn() {
               placeholder="you@dealer.com"
             />
             <TextField
-              label="PASSWORD"
+              label={t('auth.password')}
               leftIcon="lock"
               value={password}
               onChangeText={setPassword}
               secureTextEntry
               placeholder="••••••••"
             />
-            <Button title="Sign in" size="lg" onPress={onSubmit} loading={busy} disabled={!isSupabaseConfigured} />
+            <Button title={t('auth.signIn')} size="lg" onPress={onSubmit} loading={busy} disabled={!isSupabaseConfigured} />
           </View>
 
           <View style={styles.row}>
             <Text variant="body" muted>
-              No account?{' '}
+              {t('auth.noAccount')}{' '}
             </Text>
             <Link href="/sign-up">
               <Text variant="bodyStrong" color={colors.primary}>
-                Create one
+                {t('auth.createOne')}
               </Text>
             </Link>
           </View>

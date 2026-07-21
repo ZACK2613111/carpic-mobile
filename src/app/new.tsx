@@ -8,11 +8,13 @@ import { IconButton } from '@/components/IconButton';
 import { Text } from '@/components/Text';
 import { TextField } from '@/components/TextField';
 import { useCreateProject } from '@/features/projects/useProjects';
+import { useT } from '@/lib/i18n';
 import { colors, spacing } from '@/theme';
 
 export default function NewProjectScreen() {
   const router = useRouter();
   const createProject = useCreateProject();
+  const t = useT();
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -22,7 +24,7 @@ export default function NewProjectScreen() {
       const project = await createProject.mutateAsync(name.trim() || defaultName());
       router.replace({ pathname: '/project/[id]', params: { id: project.id } });
     } catch (e) {
-      Alert.alert('Could not create', e instanceof Error ? e.message : 'Please try again.');
+      Alert.alert(t('new.couldNotCreate'), e instanceof Error ? e.message : t('common.tryAgain'));
     } finally {
       setBusy(false);
     }
@@ -31,24 +33,24 @@ export default function NewProjectScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <IconButton name="close" variant="ghost" accessibilityLabel="Cancel" onPress={() => router.back()} />
+        <IconButton name="close" variant="ghost" accessibilityLabel={t('common.cancel')} onPress={() => router.back()} />
       </View>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.body}>
         <View style={styles.inner}>
           <Text variant="title" center>
-            New car
+            {t('new.title')}
           </Text>
           <Text variant="body" muted center>
-            Name it, then shoot the guided set (exterior, wheels, interior, engine…).
+            {t('new.sub')}
           </Text>
           <TextField
-            label="CAR"
+            label={t('new.car')}
             value={name}
             onChangeText={setName}
             placeholder="e.g. BMW 320d 2019"
             autoFocus
           />
-          <Button title="Create & capture" icon="camera" size="lg" onPress={create} loading={busy} />
+          <Button title={t('new.createCapture')} icon="camera" size="lg" onPress={create} loading={busy} />
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
