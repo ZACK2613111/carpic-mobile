@@ -26,7 +26,7 @@ import { useProject, useUpdateProject } from '@/features/projects/useProjects';
 import { decodeVin, normalizeVin, vinSummary } from '@/features/vehicle/vin';
 import { uploadFileUri, type UploadTask } from '@/lib/uploadQueue';
 import { useRouteId } from '@/lib/useRouteId';
-import { colors, radius, severityColor, spacing } from '@/theme';
+import { colors, radius, severityColor, shadow, spacing } from '@/theme';
 
 export default function ProjectDashboard() {
   const id = useRouteId();
@@ -403,7 +403,14 @@ function ShotTile({
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.hairline,
+  },
   title: { flex: 1, textAlign: 'center' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   content: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xxxl },
@@ -414,6 +421,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     padding: spacing.lg,
     gap: spacing.sm,
+    ...shadow.sm,
   },
   progressTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   track: { height: 8, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, overflow: 'hidden' },
@@ -428,6 +436,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     paddingVertical: spacing.lg,
+    ...shadow.sm,
   },
   group: { gap: spacing.sm },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
@@ -463,6 +472,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     padding: spacing.lg,
     gap: spacing.sm,
+    ...shadow.sm,
   },
   vinHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   vinChips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
