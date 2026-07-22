@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
@@ -45,11 +46,7 @@ export default function SignIn() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.hero}>
-            <View style={styles.logo}>
-              <Text variant="heading" color="#FFFFFF">
-                CS
-              </Text>
-            </View>
+            <Image source={require('../../../assets/images/icon.png')} style={styles.logo} contentFit="cover" />
             <Text variant="title">CarStudio</Text>
             <Text variant="body" muted center>
               {t('auth.tagline')}
@@ -101,15 +98,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: spacing.xl, gap: spacing.xl },
   hero: { alignItems: 'center', gap: spacing.sm },
-  logo: {
-    width: 64,
-    height: 64,
-    borderRadius: radius.lg,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
-  },
+  logo: { width: 64, height: 64, borderRadius: radius.lg, marginBottom: spacing.sm },
   form: { gap: spacing.md },
   row: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
 });

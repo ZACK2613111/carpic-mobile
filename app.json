@@ -49,9 +49,9 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#0B0B0F",
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "backgroundColor": "#FFFFFF",
+          "image": "./assets/images/android-icon-foreground.png",
+          "imageWidth": 160
         }
       ],
       "expo-sharing",
