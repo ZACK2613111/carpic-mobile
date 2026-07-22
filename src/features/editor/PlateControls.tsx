@@ -5,6 +5,7 @@ import { PressableScale } from '@/components/PressableScale';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import type { PlateMask, PlateStyle } from '@/features/projects/types';
 import { haptics } from '@/lib/haptics';
+import { useT } from '@/lib/i18n';
 import { colors, spacing } from '@/theme';
 import { useEditorStore } from './editorStore';
 import { PLATE_BRAND_COLORS } from './plateMask';
@@ -13,6 +14,7 @@ import { PLATE_BRAND_COLORS } from './plateMask';
 export function PlateControls({ plate }: { plate: PlateMask }) {
   const patchPlate = useEditorStore((s) => s.patchPlate);
   const setPlate = useEditorStore((s) => s.setPlate);
+  const t = useT();
 
   return (
     <View style={styles.row}>
@@ -21,8 +23,8 @@ export function PlateControls({ plate }: { plate: PlateMask }) {
           value={plate.style}
           onChange={(v) => patchPlate({ style: v })}
           options={[
-            { value: 'blur', label: 'Blur' },
-            { value: 'brand', label: 'Branded' },
+            { value: 'blur', label: t('plate.blur') },
+            { value: 'brand', label: t('plate.branded') },
           ]}
         />
       </View>
@@ -37,7 +39,7 @@ export function PlateControls({ plate }: { plate: PlateMask }) {
               ]}
               onPress={() => patchPlate({ color: c })}
               haptic="selection"
-              accessibilityLabel={`Plate color ${c}`}
+              accessibilityLabel={t('plate.colorLabel', { color: c })}
             />
           ))
         : null}
@@ -45,7 +47,7 @@ export function PlateControls({ plate }: { plate: PlateMask }) {
         name="trash"
         variant="ghost"
         size={36}
-        accessibilityLabel="Remove plate mask"
+        accessibilityLabel={t('plate.remove')}
         onPress={() => {
           haptics.medium();
           setPlate(undefined);
