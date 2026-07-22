@@ -106,8 +106,12 @@
         'grad-ocean': 'linear-gradient(#1e3c72,#2a5298)',
         'grad-sunset': 'linear-gradient(#f7971e,#ffd200)',
         'grad-graphite': 'linear-gradient(#232526,#414345)',
+        'grad-midnight': 'linear-gradient(#0f2027,#2c5364)',
         'studio-graphite': 'linear-gradient(#3a3f47,#0f1114)',
+        'studio-charcoal': 'linear-gradient(#2a2e35,#14171c)',
         'studio-showroom': 'linear-gradient(#e9edf2,#c3ccd6)',
+        'studio-warm': 'linear-gradient(#efe7dd,#d6caba)',
+        'studio-concrete': 'linear-gradient(#b7bcc4,#8b9199)',
         'studio-blue': 'linear-gradient(#1b2a4a,#0a1122)'
       };
       function bgFor(id) { return BG[id] || 'var(--surfaceAlt)'; }
@@ -116,8 +120,9 @@
       // mirroring the app's shadowStyleFor(): light floor = stronger shadow.
       var GROUND = {
         white: '#ffffff', silver: '#d7dbe0', black: '#0b0b0f',
-        'grad-ocean': '#2a5298', 'grad-sunset': '#ffd200', 'grad-graphite': '#414345',
-        'studio-graphite': '#0f1114', 'studio-showroom': '#c3ccd6', 'studio-blue': '#0a1122'
+        'grad-ocean': '#2a5298', 'grad-sunset': '#ffd200', 'grad-graphite': '#414345', 'grad-midnight': '#2c5364',
+        'studio-graphite': '#0f1114', 'studio-charcoal': '#14171c', 'studio-showroom': '#c3ccd6',
+        'studio-warm': '#d6caba', 'studio-concrete': '#8b9199', 'studio-blue': '#0a1122'
       };
       function shadowOn(cutout, bgId, override) {
         if (!cutout) return false;
