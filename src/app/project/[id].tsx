@@ -108,7 +108,7 @@ export default function ProjectDashboard() {
       toast.show(t('project.captureFirst'), 'info');
       return;
     }
-    setPublishing('Preparing');
+    setPublishing(t('publish.preparing'));
     try {
       const link = await publishProject(project, shots ?? [], (label) => setPublishing(label));
       setPublishing(null);

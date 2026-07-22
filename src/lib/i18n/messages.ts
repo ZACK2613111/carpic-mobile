@@ -295,6 +295,13 @@ const en = {
   'plate.branded': 'Branded',
   'plate.colorLabel': 'Plate color {color}',
   'plate.remove': 'Remove plate mask',
+
+  'publish.preparing': 'Preparing',
+  'publish.preparingPhotos': 'Preparing photos',
+  'publish.preparing360': 'Preparing 360°',
+  'publish.publishing': 'Publishing',
+  'publish.photosFailed': 'Some photos could not be prepared — check your connection and publish again.',
+  'publish.framesFailed': 'Some 360° frames could not be prepared — check your connection and publish again.',
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -577,6 +584,13 @@ const fr: Record<MessageKey, string> = {
   'plate.branded': 'Colorée',
   'plate.colorLabel': 'Couleur de plaque {color}',
   'plate.remove': 'Retirer le masque de plaque',
+
+  'publish.preparing': 'Préparation',
+  'publish.preparingPhotos': 'Préparation des photos',
+  'publish.preparing360': 'Préparation du 360°',
+  'publish.publishing': 'Publication',
+  'publish.photosFailed': 'Certaines photos n’ont pas pu être préparées — vérifiez votre connexion et republiez.',
+  'publish.framesFailed': 'Certaines images 360° n’ont pas pu être préparées — vérifiez votre connexion et republiez.',
 };
 
 const ar: Record<MessageKey, string> = {
@@ -856,6 +870,13 @@ const ar: Record<MessageKey, string> = {
   'plate.branded': 'ملوّنة',
   'plate.colorLabel': 'لون اللوحة {color}',
   'plate.remove': 'إزالة قناع اللوحة',
+
+  'publish.preparing': 'جارٍ التحضير',
+  'publish.preparingPhotos': 'جارٍ تحضير الصور',
+  'publish.preparing360': 'جارٍ تحضير 360°',
+  'publish.publishing': 'جارٍ النشر',
+  'publish.photosFailed': 'تعذّر تحضير بعض الصور — تحقّق من اتصالك وأعد النشر.',
+  'publish.framesFailed': 'تعذّر تحضير بعض إطارات 360° — تحقّق من اتصالك وأعد النشر.',
 };
 
 export const messages: Record<Locale, Record<MessageKey, string>> = { en, fr, ar };

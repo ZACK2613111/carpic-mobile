@@ -7,6 +7,7 @@ import { updateProject } from '@/features/projects/projects.api';
 import type { Hotspot, Project } from '@/features/projects/types';
 import type { Shot } from '@/features/shots/types';
 import { spinFramePath } from '@/features/spin/spin.api';
+import { t } from '@/lib/i18n';
 import { currentUserId, publicUrlFor, signedUrlFor, uploadFile } from '@/lib/storage';
 
 // Assets stay in the PRIVATE bucket; the public manifest embeds long-lived signed
@@ -49,7 +50,7 @@ export async function publishProject(project: Project, shots: Shot[], onStep?: P
   const uid = await currentUserId();
   const viewerUrl = await viewerAppUrl();
 
-  onStep?.('Preparing photos');
+  onStep?.(t('publish.preparingPhotos'));
   const captured = shots.filter((s) => s.captured && s.image_path);
   // Sign every shot's URL(s) in parallel rather than one round-trip at a time;
   // then drop any shot whose main image URL failed, preserving order.
@@ -80,12 +81,12 @@ export async function publishProject(project: Project, shots: Shot[], onStep?: P
   if (manifestShots.length < captured.length) {
     // Publishing with silently dropped photos ships a broken gallery to the
     // buyer — fail loudly instead; publish is retryable.
-    throw new Error('Some photos could not be prepared — check your connection and publish again.');
+    throw new Error(t('publish.photosFailed'));
   }
 
   let spin: unknown = null;
   if (project.spin && project.spin.frameCount > 0) {
-    onStep?.('Preparing 360°');
+    onStep?.(t('publish.preparing360'));
     const hasCutout = Boolean(project.spin.hasCutout);
     const frames = await Promise.all(
       Array.from({ length: project.spin.frameCount }, (_, i) =>
@@ -93,7 +94,7 @@ export async function publishProject(project: Project, shots: Shot[], onStep?: P
       )
     );
     if (frames.some((f) => !f)) {
-      throw new Error('Some 360° frames could not be prepared — check your connection and publish again.');
+      throw new Error(t('publish.framesFailed'));
     }
     spin = {
       frameCount: project.spin.frameCount,
@@ -105,7 +106,7 @@ export async function publishProject(project: Project, shots: Shot[], onStep?: P
     };
   }
 
-  onStep?.('Publishing');
+  onStep?.(t('publish.publishing'));
   const brand = getBrand();
   const watermark = watermarkVisible(brand) ? { text: brand.text.trim(), position: brand.position } : null;
   const vehicle = project.vin ? vinSummary(decodeVin(project.vin)) || null : null;
