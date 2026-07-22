@@ -1,13 +1,15 @@
 import Constants from 'expo-constants';
 import React, { useCallback } from 'react';
-import { Alert, I18nManager, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, I18nManager, Linking, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { Icon, type IconName } from '@/components/Icon';
+import { PressableScale } from '@/components/PressableScale';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { Text } from '@/components/Text';
 import { TextField } from '@/components/TextField';
+import { LINKS } from '@/constants/links';
 import { activeEngine } from '@/features/background-removal/registry';
 import { setBrand, useBrand, type WatermarkPosition } from '@/features/branding/brand';
 import { setCapturePrefs, useCapturePrefs } from '@/features/capture/capturePrefs';
@@ -27,6 +29,13 @@ export default function SettingsScreen() {
       void setLocale(next).then(({ needsReload }) => {
         if (needsReload) Alert.alert(t('settings.restartTitle'), t('settings.restartBody'));
       });
+    },
+    [t]
+  );
+
+  const openLink = useCallback(
+    (url: string) => {
+      Linking.openURL(url).catch(() => Alert.alert(t('settings.linkFailed'), t('common.tryAgain')));
     },
     [t]
   );
@@ -138,6 +147,12 @@ export default function SettingsScreen() {
           <Row icon="layers" label={t('settings.version')} value={Constants.expoConfig?.version ?? '1.0.0'} />
         </Section>
 
+        <Section title={t('settings.legal')}>
+          <LinkRow icon="lock" label={t('settings.privacy')} onPress={() => openLink(LINKS.privacy)} />
+          <LinkRow icon="check" label={t('settings.terms')} onPress={() => openLink(LINKS.terms)} />
+          <LinkRow icon="mail" label={t('settings.support')} onPress={() => openLink(LINKS.support)} />
+        </Section>
+
         <Button title={t('settings.signOut')} variant="secondary" icon="logout" onPress={confirmSignOut} style={styles.signOut} />
       </ScrollView>
     </SafeAreaView>
@@ -179,6 +194,20 @@ function Row({ icon, label, value }: { icon: IconName; label: string; value: str
         {value}
       </Text>
     </View>
+  );
+}
+
+function LinkRow({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
+  return (
+    <PressableScale style={styles.row} onPress={onPress} haptic="selection" accessibilityRole="link">
+      <View style={styles.rowLeft}>
+        <View style={styles.rowIcon}>
+          <Icon name={icon} size={18} color={colors.textMuted} />
+        </View>
+        <Text variant="body">{label}</Text>
+      </View>
+      <Icon name="forward" size={16} color={colors.textFaint} />
+    </PressableScale>
   );
 }
 
