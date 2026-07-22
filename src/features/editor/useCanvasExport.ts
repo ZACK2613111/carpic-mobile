@@ -5,6 +5,7 @@ import { Alert } from 'react-native';
 
 import { useToast } from '@/components/Toast';
 import { haptics } from '@/lib/haptics';
+import { useT } from '@/lib/i18n';
 import { useEditorStore } from './editorStore';
 import { exportCanvas, type CanvasRef } from './exportImage';
 
@@ -15,6 +16,7 @@ import { exportCanvas, type CanvasRef } from './exportImage';
  */
 export function useCanvasExport({ canvasRef, resetZoom }: { canvasRef: CanvasRef; resetZoom: () => void }) {
   const toast = useToast();
+  const t = useT();
   const [exporting, setExporting] = useState(false);
 
   const doExport = useCallback(
@@ -32,36 +34,36 @@ export function useCanvasExport({ canvasRef, resetZoom }: { canvasRef: CanvasRef
           if (await Sharing.isAvailableAsync()) {
             await Sharing.shareAsync(uri);
           } else {
-            toast.show('Sharing not available', 'error');
+            toast.show(t('export.sharingUnavailable'), 'error');
           }
         } else {
           const perm = await MediaLibrary.requestPermissionsAsync();
           if (!perm.granted) {
-            Alert.alert('Permission needed', 'Allow photo access to save the image.');
+            Alert.alert(t('export.permissionTitle'), t('export.permissionBody'));
             return;
           }
           await MediaLibrary.saveToLibraryAsync(uri);
           haptics.success();
-          toast.show('Saved to Photos', 'success');
+          toast.show(t('export.savedToPhotos'), 'success');
         }
       } catch (e) {
-        Alert.alert('Export failed', e instanceof Error ? e.message : 'Please try again.');
+        Alert.alert(t('export.failed'), e instanceof Error ? e.message : t('common.tryAgain'));
       } finally {
         setExporting(false);
       }
     },
-    [canvasRef, resetZoom, toast]
+    [canvasRef, resetZoom, toast, t]
   );
 
   const onExportPress = useCallback(() => {
     const s = useEditorStore.getState();
     if (!s.cutoutUri && !s.originalUri) return;
-    Alert.alert('Export image', 'How would you like to export?', [
-      { text: 'Share', onPress: () => doExport('share') },
-      { text: 'Save to Photos', onPress: () => doExport('save') },
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('export.sheetTitle'), t('export.sheetBody'), [
+      { text: t('project.share'), onPress: () => doExport('share') },
+      { text: t('export.saveToPhotos'), onPress: () => doExport('save') },
+      { text: t('common.cancel'), style: 'cancel' },
     ]);
-  }, [doExport]);
+  }, [doExport, t]);
 
   return { exporting, onExportPress };
 }
