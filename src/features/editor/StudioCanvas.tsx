@@ -18,15 +18,23 @@ import {
   useImage,
   vec,
 } from '@shopify/react-native-skia';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Platform } from 'react-native';
 
 import { watermarkAnchor, type WatermarkPosition } from '@/features/branding/brand';
 import type { Hotspot, PlateMask } from '@/features/projects/types';
 import { colors, hotspotColor } from '@/theme';
 import { getBackground, type BackgroundPreset } from './backgrounds';
+import { computeAlphaBounds } from './cutoutBounds';
 import type { CanvasRef } from './exportImage';
-import { groundShadowEllipse, shadowEnabled, shadowStyleFor } from './groundShadow';
+import {
+  carRectInCanvas,
+  groundShadowEllipse,
+  groundShadowEllipseFromBounds,
+  shadowEnabled,
+  shadowStyleFor,
+  type ShadowEllipse,
+} from './groundShadow';
 
 const PIN_R = 15;
 const FONT_SIZE = 15;
@@ -92,10 +100,25 @@ export function StudioCanvas({
   const showingCutout = Boolean(cutoutUri);
   const withShadow = showingCutout && shadowEnabled(bg, shadow);
 
+  // Place the shadow under the car's real footprint (from the cutout's alpha
+  // bounds), so it tracks the vehicle instead of a fixed guess. Falls back to
+  // the static ellipse whenever the alpha scan is unavailable.
+  const carBounds = useMemo(
+    () => (showingCutout && displayImage ? computeAlphaBounds(displayImage) : null),
+    [showingCutout, displayImage]
+  );
+  const shadowEllipse = useMemo<ShadowEllipse>(
+    () =>
+      carBounds
+        ? groundShadowEllipseFromBounds(carRectInCanvas(carBounds.norm, carBounds.aspect, width, height), height)
+        : groundShadowEllipse(width, height),
+    [carBounds, width, height]
+  );
+
   return (
     <Canvas ref={canvasRef} style={{ width, height }}>
       <BackgroundLayer bg={bg} width={width} height={height} />
-      {withShadow ? <GroundShadow bg={bg} width={width} height={height} /> : null}
+      {withShadow ? <GroundShadow bg={bg} ellipse={shadowEllipse} /> : null}
       {displayImage ? (
         <Group layer={showingCutout ? <Paint><Blur blur={EDGE_FEATHER} /></Paint> : undefined}>
           <SkiaImage image={displayImage} x={0} y={0} width={width} height={height} fit="contain" />
@@ -212,8 +235,8 @@ function PlateLayer({
   );
 }
 
-function GroundShadow({ bg, width, height }: { bg: BackgroundPreset; width: number; height: number }) {
-  const { cx, cy, rx, ry } = groundShadowEllipse(width, height);
+function GroundShadow({ bg, ellipse }: { bg: BackgroundPreset; ellipse: ShadowEllipse }) {
+  const { cx, cy, rx, ry } = ellipse;
   const style = shadowStyleFor(bg);
   return (
     <Oval
