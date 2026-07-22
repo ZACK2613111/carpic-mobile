@@ -22,6 +22,12 @@ export type UploadTask = {
   /** Kind-specific data the handler needs (slot, section, frame index…). */
   payload: Record<string, unknown>;
   attempts: number;
+  /**
+   * Dead-lettered: a permanent (4xx) failure that retrying won't fix. Excluded
+   * from draining and from the pending view; surfaced separately so the user can
+   * retry (e.g. after re-auth) or discard it.
+   */
+  failed?: boolean;
   createdAt: number;
 };
 
@@ -40,7 +46,29 @@ export type UploadQueueDeps = {
   setTimer: (fn: () => void, ms: number) => unknown;
   clearTimer: (handle: unknown) => void;
   random?: () => number;
+  /** Classify a handler error as permanent (dead-letter now) vs transient (keep retrying). Defaults to {@link isPermanentUploadError}. */
+  isPermanentError?: (error: unknown) => boolean;
 };
+
+/**
+ * Whether a failed upload will never succeed on retry, so it should be
+ * dead-lettered instead of retried forever. True for 4xx (RLS denial, payload
+ * too large, malformed) — except 408/429 which are retryable — and the
+ * Postgrest RLS code. Unknown/network errors are transient (keep retrying, so
+ * offline capture is never dropped).
+ */
+export function isPermanentUploadError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const e = error as { status?: unknown; statusCode?: unknown; code?: unknown };
+  const status =
+    typeof e.status === 'number'
+      ? e.status
+      : typeof e.statusCode === 'string' && /^\d+$/.test(e.statusCode)
+        ? Number(e.statusCode)
+        : null;
+  if (status != null) return status >= 400 && status < 500 && status !== 408 && status !== 429;
+  return e.code === '42501'; // insufficient_privilege (RLS) has no HTTP status on the error
+}
 
 export type EnqueueInput = {
   kind: string;
@@ -54,7 +82,12 @@ export type EnqueueInput = {
 const MAX_BACKOFF_MS = 5 * 60_000;
 
 export function createUploadQueue(deps: UploadQueueDeps) {
+  const isPermanent = deps.isPermanentError ?? isPermanentUploadError;
   let tasks: UploadTask[] = [];
+  // Cached, stable-reference views recomputed only when `tasks` changes, so the
+  // useSyncExternalStore consumers don't see a new array every render.
+  let pendingSnapshot: UploadTask[] = [];
+  let failedSnapshot: UploadTask[] = [];
   const handlers = new Map<string, UploadHandler>();
   const listeners = new Set<() => void>();
   let drainPromise: Promise<void> | null = null;
@@ -66,6 +99,8 @@ export function createUploadQueue(deps: UploadQueueDeps) {
 
   function setTasks(next: UploadTask[]) {
     tasks = next;
+    pendingSnapshot = tasks.filter((t) => !t.failed);
+    failedSnapshot = tasks.filter((t) => t.failed);
     persist();
     notify();
   }
@@ -121,7 +156,7 @@ export function createUploadQueue(deps: UploadQueueDeps) {
       const skipped = new Set<string>();
       // Re-read `tasks` every iteration: tasks enqueued mid-drain are picked up too.
       for (;;) {
-        const next = tasks.find((t) => !skipped.has(t.id));
+        const next = tasks.find((t) => !skipped.has(t.id) && !t.failed);
         if (!next) break;
         const handler = handlers.get(next.kind);
         if (!handler) {
@@ -132,12 +167,18 @@ export function createUploadQueue(deps: UploadQueueDeps) {
           await handler(next, deps.pathFor(next.fileName));
           void deps.removeFile(next.fileName).catch(() => {});
           setTasks(tasks.filter((t) => t.id !== next.id));
-        } catch {
+        } catch (e) {
           skipped.add(next.id);
-          setTasks(tasks.map((t) => (t.id === next.id ? { ...t, attempts: t.attempts + 1 } : t)));
+          // Permanent (4xx/RLS) → dead-letter now instead of retrying forever;
+          // transient (network/5xx) → bump attempts and keep retrying.
+          const failed = isPermanent(e);
+          setTasks(
+            tasks.map((t) => (t.id === next.id ? { ...t, attempts: t.attempts + 1, failed: failed || t.failed } : t))
+          );
         }
       }
-      if (skipped.size > 0 && tasks.length > 0) scheduleRetry();
+      // Reschedule only while pending (non-dead-lettered) work remains.
+      if (skipped.size > 0 && pendingSnapshot.length > 0) scheduleRetry();
     })().finally(() => {
       drainPromise = null;
     });
@@ -145,8 +186,8 @@ export function createUploadQueue(deps: UploadQueueDeps) {
   }
 
   function scheduleRetry(): void {
-    if (retryHandle != null || tasks.length === 0) return;
-    const minAttempts = tasks.reduce((m, t) => Math.min(m, t.attempts), Number.POSITIVE_INFINITY);
+    if (retryHandle != null || pendingSnapshot.length === 0) return;
+    const minAttempts = pendingSnapshot.reduce((m, t) => Math.min(m, t.attempts), Number.POSITIVE_INFINITY);
     const base = Math.min(1000 * 2 ** Math.min(minAttempts, 8), MAX_BACKOFF_MS);
     const jitter = (deps.random?.() ?? Math.random()) * 0.3 * base;
     retryHandle = deps.setTimer(() => {
@@ -155,9 +196,29 @@ export function createUploadQueue(deps: UploadQueueDeps) {
     }, base + jitter);
   }
 
-  /** Stable snapshot (same reference until the queue changes) — safe for useSyncExternalStore. */
+  /** Stable snapshot of pending (still-retrying) tasks — safe for useSyncExternalStore. */
   function getPending(): UploadTask[] {
-    return tasks;
+    return pendingSnapshot;
+  }
+
+  /** Stable snapshot of dead-lettered tasks (permanent failures) — for a "couldn't upload" banner. */
+  function getFailed(): UploadTask[] {
+    return failedSnapshot;
+  }
+
+  /** Move every dead-lettered task back to pending (e.g. after re-auth) and re-drain. */
+  function retryFailed(): void {
+    if (failedSnapshot.length === 0) return;
+    setTasks(tasks.map((t) => (t.failed ? { ...t, failed: false, attempts: 0 } : t)));
+    void drain();
+  }
+
+  /** Drop a dead-lettered task and its outbox file (the user gives up on it). */
+  function discardFailed(id: string): void {
+    const task = tasks.find((t) => t.id === id && t.failed);
+    if (!task) return;
+    void deps.removeFile(task.fileName).catch(() => {});
+    setTasks(tasks.filter((t) => t.id !== id));
   }
 
   function subscribe(cb: () => void): () => void {
@@ -165,7 +226,7 @@ export function createUploadQueue(deps: UploadQueueDeps) {
     return () => listeners.delete(cb);
   }
 
-  return { init, registerHandler, enqueue, drain, getPending, subscribe };
+  return { init, registerHandler, enqueue, drain, getPending, getFailed, retryFailed, discardFailed, subscribe };
 }
 
 export type UploadQueue = ReturnType<typeof createUploadQueue>;

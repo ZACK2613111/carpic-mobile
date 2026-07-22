@@ -45,6 +45,9 @@ export const registerUploadHandler = queue.registerHandler;
 export const enqueueUpload = queue.enqueue;
 export const drainUploadQueue = queue.drain;
 export const getPendingUploads = queue.getPending;
+export const getFailedUploads = queue.getFailed;
+export const retryFailedUploads = queue.retryFailed;
+export const discardFailedUpload = queue.discardFailed;
 export const subscribeUploadQueue = queue.subscribe;
 
 /** Absolute URI of a queued task's local file — usable as an <Image> source. */

@@ -21,12 +21,13 @@ import { summarizeInspection, type HotspotGroup } from '@/features/inspection/re
 import { publishProject } from '@/features/publish/publish';
 import type { Shot } from '@/features/shots/types';
 import { shotKeys, useShots, useShotSignedUrl } from '@/features/shots/useShots';
+import { useFailedUploads } from '@/features/uploads/useFailedUploads';
 import { usePendingUploads } from '@/features/uploads/usePendingUploads';
 import type { ShotUploadPayload } from '@/features/uploads/uploads';
 import { useProject, useUpdateProject } from '@/features/projects/useProjects';
 import { decodeVin, normalizeVin, vinSummary } from '@/features/vehicle/vin';
 import { useLocale, useT } from '@/lib/i18n';
-import { uploadFileUri, type UploadTask } from '@/lib/uploadQueue';
+import { discardFailedUpload, retryFailedUploads, uploadFileUri, type UploadTask } from '@/lib/uploadQueue';
 import { useRouteId } from '@/lib/useRouteId';
 import { colors, radius, severityColor, shadow, spacing } from '@/theme';
 
@@ -60,6 +61,7 @@ export default function ProjectDashboard() {
   // Photos captured but not yet synced (offline / upload in flight) — shown on
   // their tile from the local outbox file until the real row lands.
   const pendingUploads = usePendingUploads(id ?? undefined);
+  const failedUploads = useFailedUploads(id ?? undefined);
   const pendingBySlot = useMemo(() => {
     const map: Record<string, UploadTask> = {};
     pendingUploads.forEach((tk) => {
@@ -176,6 +178,34 @@ export default function ProjectDashboard() {
               </View>
             ) : null}
           </View>
+
+          {/* Dead-lettered uploads (permanent failures) — no longer retried
+              silently; the seller can retry (e.g. after re-auth) or discard. */}
+          {failedUploads.length > 0 ? (
+            <View style={styles.failedCard}>
+              <Text variant="bodyStrong" color={colors.danger}>
+                {t('project.uploadsFailedTitle')}
+              </Text>
+              <Text variant="caption" muted>
+                {t('project.uploadsFailedBody', { n: failedUploads.length })}
+              </Text>
+              <View style={styles.failedActions}>
+                <Button
+                  title={t('common.retry')}
+                  icon="refresh"
+                  variant="secondary"
+                  onPress={() => retryFailedUploads()}
+                  style={styles.skFlex}
+                />
+                <Button
+                  title={t('project.dismiss')}
+                  variant="ghost"
+                  onPress={() => failedUploads.forEach((u) => discardFailedUpload(u.id))}
+                  style={styles.skFlex}
+                />
+              </View>
+            </View>
+          ) : null}
 
           {/* vehicle (VIN) */}
           <VinCard projectId={id} initialVin={project?.vin ?? ''} />
@@ -457,6 +487,16 @@ const styles = StyleSheet.create({
     ...shadow.sm,
   },
   progressTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  failedCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    padding: spacing.lg,
+    gap: spacing.sm,
+    ...shadow.sm,
+  },
+  failedActions: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.xs },
   track: { height: 8, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, overflow: 'hidden' },
   fill: { height: 8, borderRadius: radius.pill, backgroundColor: colors.primary },
   actionRow: { flexDirection: 'row', gap: spacing.md },
