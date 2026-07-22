@@ -1,6 +1,6 @@
 import { useCanvasRef } from '@shopify/react-native-skia';
 import { useRouter } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
 import Animated from 'react-native-reanimated';
@@ -50,6 +50,7 @@ export default function EditorScreen() {
   const canvasRef = useCanvasRef();
   const toast = useToast();
   const t = useT();
+  const [reloadKey, setReloadKey] = useState(0);
 
   const { data: shot, isLoading: shotLoading, isError: shotError, refetch: refetchShot } = useShot(id ?? undefined);
   const updateShot = useUpdateShot();
@@ -94,7 +95,13 @@ export default function EditorScreen() {
   const watermark = watermarkVisible(brand) ? { text: brand.text, position: brand.position } : undefined;
 
   // ---- composition: hydration, coach marks, gestures, export ----
-  useShotHydration(shot);
+  useShotHydration(shot, reloadKey);
+  // Retry a failed image load: reset the store (clears the cached null URLs) and
+  // bump the reload key so hydration runs again — no more infinite spinner.
+  const retryHydrate = useCallback(() => {
+    useEditorStore.getState().reset();
+    setReloadKey((k) => k + 1);
+  }, []);
   const coach = useCoachMarks(COACH_KEY);
   const { canvasSize, onCanvasLayout, gesture, contentStyle, zoomed, resetZoom } = useCanvasGestures({
     editable: !removing && !coach.visible,
@@ -142,6 +149,7 @@ export default function EditorScreen() {
           await updateShot.mutateAsync({ id: shot.id, patch: { cutout_path: path } });
         } catch (uploadErr) {
           console.warn('[editor] cutout upload failed', uploadErr);
+          toast.show(t('editor.cutoutSaveFailed'), 'error');
         }
       }
     } catch (e) {
@@ -295,9 +303,20 @@ export default function EditorScreen() {
           ) : null}
 
           {!originalUri ? (
-            <View style={styles.centerOverlay} pointerEvents="none">
-              <ActivityIndicator color={colors.primary} />
-            </View>
+            hydrated ? (
+              // Hydration finished but the signed photo URL never resolved
+              // (transient storage/network error) — offer a retry, not a hang.
+              <View style={styles.loadError}>
+                <Text variant="body" muted center>
+                  {t('editor.photoLoadFailed')}
+                </Text>
+                <Button title={t('common.retry')} icon="refresh" variant="secondary" onPress={retryHydrate} />
+              </View>
+            ) : (
+              <View style={styles.centerOverlay} pointerEvents="none">
+                <ActivityIndicator color={colors.primary} />
+              </View>
+            )
           ) : null}
 
           {removing ? (
@@ -439,6 +458,17 @@ const styles = StyleSheet.create({
   },
   canvasContent: { flex: 1 },
   centerOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
+  loadError: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.md,
+    padding: spacing.xl,
+  },
   zoomReset: { position: 'absolute', top: spacing.sm, right: spacing.sm },
   nudge: { position: 'absolute', left: spacing.sm, bottom: spacing.sm },
   tapHint: {
