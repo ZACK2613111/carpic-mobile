@@ -5,7 +5,6 @@ import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } f
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
-import { ConfigNotice } from '@/components/ConfigNotice';
 import { Text } from '@/components/Text';
 import { TextField } from '@/components/TextField';
 import { isSupabaseConfigured } from '@/lib/env';
@@ -13,25 +12,27 @@ import { useT } from '@/lib/i18n';
 import { useAuth } from '@/providers/AuthProvider';
 import { colors, radius, spacing } from '@/theme';
 
-export default function SignIn() {
-  const { signIn } = useAuth();
+export default function ForgotPassword() {
+  const { resetPassword } = useAuth();
   const router = useRouter();
   const t = useT();
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
 
   const onSubmit = async () => {
-    if (!email || !password) {
-      Alert.alert(t('auth.missingInfo'), t('auth.enterEmailPassword'));
+    if (!email.trim()) {
+      Alert.alert(t('auth.missingInfo'), t('auth.emailRequired'));
       return;
     }
     setBusy(true);
     try {
-      await signIn(email.trim(), password);
-      router.replace('/');
+      await resetPassword(email.trim());
+      // Same message whether or not the account exists — never reveal which
+      // emails are registered.
+      Alert.alert(t('auth.resetSentTitle'), t('auth.resetSentBody'));
+      router.replace('/sign-in');
     } catch (e) {
-      Alert.alert(t('auth.signInFailed'), e instanceof Error ? e.message : t('common.tryAgain'));
+      Alert.alert(t('auth.resetFailed'), e instanceof Error ? e.message : t('common.tryAgain'));
     } finally {
       setBusy(false);
     }
@@ -47,13 +48,13 @@ export default function SignIn() {
         >
           <View style={styles.hero}>
             <Image source={require('../../../assets/images/icon.png')} style={styles.logo} contentFit="cover" />
-            <Text variant="title">CarStudio</Text>
+            <Text variant="title" center>
+              {t('auth.forgotTitle')}
+            </Text>
             <Text variant="body" muted center>
-              {t('auth.tagline')}
+              {t('auth.forgotSub')}
             </Text>
           </View>
-
-          {!isSupabaseConfigured ? <ConfigNotice /> : null}
 
           <View style={styles.form}>
             <TextField
@@ -66,31 +67,19 @@ export default function SignIn() {
               keyboardType="email-address"
               placeholder="you@dealer.com"
             />
-            <TextField
-              label={t('auth.password')}
-              leftIcon="lock"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              placeholder="••••••••"
+            <Button
+              title={t('auth.sendReset')}
+              size="lg"
+              onPress={onSubmit}
+              loading={busy}
+              disabled={!isSupabaseConfigured}
             />
-            <View style={styles.forgotRow}>
-              <Link href="/forgot-password">
-                <Text variant="caption" color={colors.primary}>
-                  {t('auth.forgotLink')}
-                </Text>
-              </Link>
-            </View>
-            <Button title={t('auth.signIn')} size="lg" onPress={onSubmit} loading={busy} disabled={!isSupabaseConfigured} />
           </View>
 
           <View style={styles.row}>
-            <Text variant="body" muted>
-              {t('auth.noAccount')}{' '}
-            </Text>
-            <Link href="/sign-up">
+            <Link href="/sign-in">
               <Text variant="bodyStrong" color={colors.primary}>
-                {t('auth.createOne')}
+                {t('auth.signIn')}
               </Text>
             </Link>
           </View>
@@ -107,6 +96,5 @@ const styles = StyleSheet.create({
   hero: { alignItems: 'center', gap: spacing.sm },
   logo: { width: 64, height: 64, borderRadius: radius.lg, marginBottom: spacing.sm },
   form: { gap: spacing.md },
-  forgotRow: { alignItems: 'flex-end', marginTop: -spacing.xs },
   row: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
 });

@@ -15,6 +15,7 @@ type AuthContextValue = {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName?: string) => Promise<SignUpResult>;
+  resetPassword: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -83,6 +84,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // the user is already signed in. When it's ON, there's no session yet and
         // they must confirm their email first.
         return { session: data.session, needsConfirmation: !data.session };
+      },
+      async resetPassword(email) {
+        // Sends a recovery email. Completing it in-app (a set-new-password screen
+        // via a PASSWORD_RECOVERY deep link) needs Supabase redirect config —
+        // Phase 2; the emailed link already lets the user reset.
+        const { error } = await supabase.auth.resetPasswordForEmail(email);
+        if (error) throw error;
       },
       async signOut() {
         explicitSignOut.current = true;
