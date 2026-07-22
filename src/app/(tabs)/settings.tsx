@@ -1,5 +1,5 @@
 import Constants from 'expo-constants';
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Alert, I18nManager, Linking, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -18,11 +18,12 @@ import { useAuth } from '@/providers/AuthProvider';
 import { colors, radius, spacing } from '@/theme';
 
 export default function SettingsScreen() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, deleteAccount } = useAuth();
   const brand = useBrand();
   const prefs = useCapturePrefs();
   const t = useT();
   const locale = useLocale();
+  const [deleting, setDeleting] = useState(false);
 
   const changeLanguage = useCallback(
     (next: Locale) => {
@@ -39,6 +40,25 @@ export default function SettingsScreen() {
     },
     [t]
   );
+
+  const confirmDelete = useCallback(() => {
+    Alert.alert(t('settings.deleteAccount'), t('settings.deleteAccountBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('settings.deleteAccountConfirm'),
+        style: 'destructive',
+        onPress: () => {
+          setDeleting(true);
+          // On success the auth state clears and the tabs layout redirects to
+          // sign-in (this screen unmounts), so only the failure path resets.
+          deleteAccount().catch((e) => {
+            setDeleting(false);
+            Alert.alert(t('settings.deleteAccountFailed'), e instanceof Error ? e.message : t('common.tryAgain'));
+          });
+        },
+      },
+    ]);
+  }, [deleteAccount, t]);
 
   const confirmSignOut = useCallback(() => {
     Alert.alert(t('settings.signOut'), t('settings.signOutConfirm'), [
@@ -154,6 +174,14 @@ export default function SettingsScreen() {
         </Section>
 
         <Button title={t('settings.signOut')} variant="secondary" icon="logout" onPress={confirmSignOut} style={styles.signOut} />
+        <Button
+          title={t('settings.deleteAccount')}
+          variant="danger"
+          icon="trash"
+          onPress={confirmDelete}
+          loading={deleting}
+          style={styles.deleteAccount}
+        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -281,4 +309,5 @@ const styles = StyleSheet.create({
   brandBody: { paddingVertical: spacing.md, gap: spacing.md },
   brandToggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   signOut: { marginTop: spacing.sm },
+  deleteAccount: { marginTop: spacing.xs },
 });

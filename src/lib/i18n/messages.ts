@@ -101,6 +101,10 @@ const en = {
   'settings.signOut': 'Sign out',
   'settings.signOutConfirm': 'Are you sure you want to sign out?',
   'settings.signOutFailed': 'Sign out failed',
+  'settings.deleteAccount': 'Delete account',
+  'settings.deleteAccountBody': "This permanently deletes your account and all your cars, photos and 360s — it can't be undone.",
+  'settings.deleteAccountConfirm': 'Delete my account',
+  'settings.deleteAccountFailed': "Couldn't delete your account",
   'settings.restartTitle': 'Restart needed',
   'settings.restartBody': 'Close and reopen CarStudio to apply the new text direction.',
 
@@ -408,6 +412,10 @@ const fr: Record<MessageKey, string> = {
   'settings.signOut': 'Se déconnecter',
   'settings.signOutConfirm': 'Voulez-vous vraiment vous déconnecter ?',
   'settings.signOutFailed': 'Échec de la déconnexion',
+  'settings.deleteAccount': 'Supprimer le compte',
+  'settings.deleteAccountBody': 'Cela supprime définitivement votre compte et toutes vos voitures, photos et 360 — action irréversible.',
+  'settings.deleteAccountConfirm': 'Supprimer mon compte',
+  'settings.deleteAccountFailed': 'Impossible de supprimer le compte',
   'settings.restartTitle': 'Redémarrage nécessaire',
   'settings.restartBody': 'Fermez et rouvrez CarStudio pour appliquer la nouvelle direction du texte.',
 
@@ -712,6 +720,10 @@ const ar: Record<MessageKey, string> = {
   'settings.signOut': 'تسجيل الخروج',
   'settings.signOutConfirm': 'هل تريد بالتأكيد تسجيل الخروج؟',
   'settings.signOutFailed': 'فشل تسجيل الخروج',
+  'settings.deleteAccount': 'حذف الحساب',
+  'settings.deleteAccountBody': 'يحذف هذا حسابك نهائيًا وكل سياراتك وصورك ولقطات 360 — لا يمكن التراجع عن ذلك.',
+  'settings.deleteAccountConfirm': 'حذف حسابي',
+  'settings.deleteAccountFailed': 'تعذّر حذف الحساب',
   'settings.restartTitle': 'يلزم إعادة التشغيل',
   'settings.restartBody': 'أغلق تطبيق CarStudio وأعد فتحه لتطبيق اتجاه النص الجديد.',
 
