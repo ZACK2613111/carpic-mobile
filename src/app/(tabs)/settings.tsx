@@ -1,6 +1,6 @@
 import Constants from 'expo-constants';
 import React, { useCallback } from 'react';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, I18nManager, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  rowValue: { flexShrink: 1, textAlign: 'right' },
+  rowValue: { flexShrink: 1, textAlign: I18nManager.isRTL ? 'left' : 'right' },
   note: { paddingHorizontal: spacing.xs, paddingBottom: spacing.md },
   langBody: { paddingVertical: spacing.md },
   brandBody: { paddingVertical: spacing.md, gap: spacing.md },

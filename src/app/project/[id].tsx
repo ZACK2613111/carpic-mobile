@@ -490,7 +490,7 @@ const styles = StyleSheet.create({
   badge: {
     position: 'absolute',
     top: 4,
-    right: 4,
+    end: 4,
     width: 20,
     height: 20,
     borderRadius: 10,
@@ -511,7 +511,7 @@ const styles = StyleSheet.create({
   },
   vinHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   vinChips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-  conditionCount: { marginLeft: 'auto' },
+  conditionCount: { marginStart: 'auto' },
   sevChip: {
     flexDirection: 'row',
     alignItems: 'center',
