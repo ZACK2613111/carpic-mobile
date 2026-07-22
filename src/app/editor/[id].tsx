@@ -37,6 +37,7 @@ import { uploadShotAsset } from '@/features/shots/shots.api';
 import { useShot, useShotSignedUrl, useUpdateShot } from '@/features/shots/useShots';
 import { haptics } from '@/lib/haptics';
 import { useT } from '@/lib/i18n';
+import { captureException } from '@/lib/reporting';
 import { useCoachMarks } from '@/lib/useCoachMarks';
 import { useDebouncedAutosave } from '@/lib/useDebouncedAutosave';
 import { useRouteId } from '@/lib/useRouteId';
@@ -148,7 +149,7 @@ export default function EditorScreen() {
           const path = await uploadShotAsset(shot.project_id, shot.slot, 'cutout', cut, 'image/png');
           await updateShot.mutateAsync({ id: shot.id, patch: { cutout_path: path } });
         } catch (uploadErr) {
-          console.warn('[editor] cutout upload failed', uploadErr);
+          captureException(uploadErr, { context: 'cutout-upload' });
           toast.show(t('editor.cutoutSaveFailed'), 'error');
         }
       }
