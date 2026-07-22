@@ -17,13 +17,14 @@ import { CaptureFlash, type CaptureFlashHandle } from '@/features/capture/Captur
 import { Filmstrip } from '@/features/capture/Filmstrip';
 import { GuideOverlay } from '@/features/capture/GuideOverlay';
 import { setCapturePrefs, useCapturePrefs } from '@/features/capture/capturePrefs';
-import { SHOT_TEMPLATE, slotPosition } from '@/features/capture/shotTemplate';
+import { localizedLabel, SHOT_TEMPLATE, slotPosition } from '@/features/capture/shotTemplate';
 import { useHorizonLevel } from '@/features/capture/useHorizonLevel';
 import type { Shot } from '@/features/shots/types';
 import { useShots } from '@/features/shots/useShots';
 import { enqueueShotUpload, type ShotUploadPayload } from '@/features/uploads/uploads';
 import { usePendingUploads } from '@/features/uploads/usePendingUploads';
 import { haptics } from '@/lib/haptics';
+import { useLocale, useT } from '@/lib/i18n';
 import { deleteLocal, prepareForUpload } from '@/lib/imagePrep';
 import { uploadFileUri } from '@/lib/uploadQueue';
 import { colors, radius, spacing } from '@/theme';
@@ -44,6 +45,8 @@ export default function CaptureScreen() {
   const { id, start } = useLocalSearchParams<{ id: string; start?: string }>();
   const router = useRouter();
   const toast = useToast();
+  const t = useT();
+  const locale = useLocale();
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
 
@@ -117,12 +120,12 @@ export default function CaptureScreen() {
         haptics.success();
         advance();
       } catch (e) {
-        toast.show(e instanceof Error ? e.message : 'Could not save the photo', 'error');
+        toast.show(e instanceof Error ? e.message : t('capture.saveFailed'), 'error');
       } finally {
         setBusy(false);
       }
     },
-    [doEnqueue, advance, toast]
+    [doEnqueue, advance, toast, t]
   );
 
   // Fast mode: fire-and-forget stash so the burst never blocks on I/O.
@@ -157,7 +160,7 @@ export default function CaptureScreen() {
           if (index >= total - 1) {
             await Promise.all(stashes.current).catch(() => {});
             if (stashFailures.current > 0) {
-              toast.show('Some photos could not be saved — check free storage', 'error');
+              toast.show(t('capture.someFailed'), 'error');
             }
             router.back();
           } else {
@@ -169,11 +172,11 @@ export default function CaptureScreen() {
         }
       }
     } catch {
-      toast.show('Could not take the photo', 'error');
+      toast.show(t('capture.takeFailed'), 'error');
     } finally {
       inFlight.current = false;
     }
-  }, [pending, slot, cameraReady, prefs.fastMode, index, total, stashShot, router, toast]);
+  }, [pending, slot, cameraReady, prefs.fastMode, index, total, stashShot, router, toast, t]);
 
   const onUse = useCallback(() => {
     if (pending) void commitShot(pending);
@@ -199,13 +202,13 @@ export default function CaptureScreen() {
     return (
       <SafeAreaView style={styles.permWrap}>
         <Text variant="heading" center>
-          Camera access needed
+          {t('capture.cameraNeededTitle')}
         </Text>
         <Text variant="body" muted center>
-          CarStudio uses the camera for guided car photos.
+          {t('capture.cameraNeededBody')}
         </Text>
-        <Button title="Grant camera access" icon="camera" onPress={requestPermission} />
-        <Button title="Cancel" variant="ghost" onPress={() => router.back()} />
+        <Button title={t('capture.grantCamera')} icon="camera" onPress={requestPermission} />
+        <Button title={t('common.cancel')} variant="ghost" onPress={() => router.back()} />
       </SafeAreaView>
     );
   }
@@ -225,7 +228,7 @@ export default function CaptureScreen() {
       {!pending && slot ? (
         <GuideOverlay
           guide={slot.guide}
-          label={`${slot.label} · ${slot.labelFr}`}
+          label={localizedLabel(slot, locale)}
           grid={prefs.grid}
           showLevel={prefs.level && level.available}
           levelStatus={level.status}
@@ -245,7 +248,7 @@ export default function CaptureScreen() {
       <SafeAreaView style={styles.ui} edges={['top', 'bottom']} pointerEvents="box-none">
         {/* top bar */}
         <View style={styles.topBar}>
-          <IconButton name="close" variant="surface" accessibilityLabel="Close" onPress={() => router.back()} />
+          <IconButton name="close" variant="surface" accessibilityLabel={t('common.close')} onPress={() => router.back()} />
           <View style={styles.progressPill}>
             <Text variant="caption" color="#FFFFFF">
               {index + 1} / {total}
@@ -254,7 +257,7 @@ export default function CaptureScreen() {
           <IconButton
             name="grid"
             variant={prefs.grid ? 'primary' : 'surface'}
-            accessibilityLabel="Toggle grid"
+            accessibilityLabel={t('capture.toggleGrid')}
             onPress={() => setCapturePrefs({ grid: !prefs.grid })}
           />
         </View>
@@ -264,7 +267,7 @@ export default function CaptureScreen() {
           {pending ? (
             <View style={styles.reviewBar}>
               <Button
-                title="Retake"
+                title={t('capture.retake')}
                 variant="secondary"
                 icon="refresh"
                 onPress={() => {
@@ -273,7 +276,7 @@ export default function CaptureScreen() {
                 }}
                 style={styles.flex}
               />
-              <Button title="Use photo" icon="check" onPress={onUse} loading={busy} style={styles.flex} />
+              <Button title={t('capture.usePhoto')} icon="check" onPress={onUse} loading={busy} style={styles.flex} />
             </View>
           ) : (
             <>
@@ -285,7 +288,7 @@ export default function CaptureScreen() {
               />
               <View style={styles.shutterRow}>
                 <View style={styles.sideLeft}>
-                  <Button title="Skip" variant="ghost" onPress={advance} />
+                  <Button title={t('capture.skip')} variant="ghost" onPress={advance} />
                 </View>
                 <PressableScale style={styles.shutterOuter} onPress={onShutter} haptic="medium">
                   <View style={styles.shutterInner} />
@@ -303,17 +306,18 @@ export default function CaptureScreen() {
 }
 
 function ModeToggle({ fast, onToggle }: { fast: boolean; onToggle: () => void }) {
+  const t = useT();
   return (
-    <PressableScale style={styles.modeToggle} onPress={onToggle} haptic="selection" accessibilityLabel="Toggle fast capture">
+    <PressableScale style={styles.modeToggle} onPress={onToggle} haptic="selection" accessibilityLabel={t('capture.toggleFast')}>
       <View style={[styles.modeOpt, !fast && styles.modeOptOn]}>
         <Text variant="label" color={!fast ? '#FFFFFF' : 'rgba(255,255,255,0.6)'}>
-          Review
+          {t('capture.review')}
         </Text>
       </View>
       <View style={[styles.modeOpt, fast && styles.modeOptOn]}>
         <Icon name="bolt" size={12} color={fast ? '#FFFFFF' : 'rgba(255,255,255,0.6)'} />
         <Text variant="label" color={fast ? '#FFFFFF' : 'rgba(255,255,255,0.6)'}>
-          Fast
+          {t('capture.fast')}
         </Text>
       </View>
     </PressableScale>
