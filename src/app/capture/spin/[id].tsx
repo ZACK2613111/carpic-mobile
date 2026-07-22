@@ -16,6 +16,7 @@ import { EMPTY_SPIN } from '@/features/projects/types';
 import { saveSpin } from '@/features/spin/spin.api';
 import { enqueueSpinFrameUpload } from '@/features/uploads/uploads';
 import { haptics } from '@/lib/haptics';
+import { useT } from '@/lib/i18n';
 import { deleteLocal, prepareForUpload } from '@/lib/imagePrep';
 import { colors, radius, spacing } from '@/theme';
 
@@ -29,6 +30,7 @@ export default function SpinCaptureScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const toast = useToast();
+  const t = useT();
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
 
@@ -83,18 +85,20 @@ export default function SpinCaptureScreen() {
         haptics.success();
         if (stashFailures.current > 0) {
           toast.show(
-            `${stashFailures.current} frame${stashFailures.current === 1 ? '' : 's'} could not be saved — check free storage`,
+            t(stashFailures.current === 1 ? 'capture.framesFailedOne' : 'capture.framesFailedMany', {
+              n: stashFailures.current,
+            }),
             'error'
           );
         } else {
-          toast.show(`360° captured (${frames} frames)`, 'success');
+          toast.show(t('spin.captured', { n: frames }), 'success');
         }
         router.replace({ pathname: '/spin/[id]', params: { id } });
       } finally {
         setBusy(false);
       }
     },
-    [id, router, toast]
+    [id, router, toast, t]
   );
 
   const onShutter = useCallback(async () => {
@@ -113,11 +117,11 @@ export default function SpinCaptureScreen() {
         }
       }
     } catch {
-      toast.show('Could not capture the frame', 'error');
+      toast.show(t('capture.frameFailed'), 'error');
     } finally {
       setBusy(false);
     }
-  }, [busy, count, queueFrame, finish, toast]);
+  }, [busy, count, queueFrame, finish, toast, t]);
 
   if (!permission) {
     return (
@@ -130,10 +134,10 @@ export default function SpinCaptureScreen() {
     return (
       <SafeAreaView style={styles.permWrap}>
         <Text variant="heading" center>
-          Camera access needed
+          {t('capture.cameraNeededTitle')}
         </Text>
-        <Button title="Grant camera access" icon="camera" onPress={requestPermission} />
-        <Button title="Cancel" variant="ghost" onPress={() => router.back()} />
+        <Button title={t('capture.grantCamera')} icon="camera" onPress={requestPermission} />
+        <Button title={t('common.cancel')} variant="ghost" onPress={() => router.back()} />
       </SafeAreaView>
     );
   }
@@ -146,10 +150,10 @@ export default function SpinCaptureScreen() {
 
       <SafeAreaView style={styles.ui} edges={['top', 'bottom']} pointerEvents="box-none">
         <View style={styles.topBar}>
-          <IconButton name="close" variant="surface" accessibilityLabel="Close" onPress={() => router.back()} />
+          <IconButton name="close" variant="surface" accessibilityLabel={t('common.close')} onPress={() => router.back()} />
           <View style={styles.hintPill}>
             <Text variant="caption" color="#FFFFFF">
-              Walk around the car · shoot every ~15°
+              {t('spin.walkHint')}
             </Text>
           </View>
           <View style={{ width: 44 }} />
@@ -176,14 +180,14 @@ export default function SpinCaptureScreen() {
               {count}
             </Text>
             <Text variant="caption" color="rgba(255,255,255,0.8)">
-              of {TARGET}
+              {t('spin.of', { n: TARGET })}
             </Text>
           </View>
         </View>
 
         <View style={styles.bottom}>
           <View style={styles.side}>
-            {count >= MIN_FRAMES ? <Button title="Finish" variant="secondary" onPress={() => finish(count)} /> : null}
+            {count >= MIN_FRAMES ? <Button title={t('spin.finish')} variant="secondary" onPress={() => finish(count)} /> : null}
           </View>
           <PressableScale style={styles.shutterOuter} onPress={onShutter} haptic="medium" disabled={busy}>
             <View style={styles.shutterInner} />
