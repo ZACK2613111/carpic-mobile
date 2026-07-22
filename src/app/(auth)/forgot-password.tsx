@@ -9,6 +9,7 @@ import { Text } from '@/components/Text';
 import { TextField } from '@/components/TextField';
 import { isSupabaseConfigured } from '@/lib/env';
 import { useT } from '@/lib/i18n';
+import { isValidEmail } from '@/lib/validation';
 import { useAuth } from '@/providers/AuthProvider';
 import { colors, radius, spacing } from '@/theme';
 
@@ -22,6 +23,10 @@ export default function ForgotPassword() {
   const onSubmit = async () => {
     if (!email.trim()) {
       Alert.alert(t('auth.missingInfo'), t('auth.emailRequired'));
+      return;
+    }
+    if (!isValidEmail(email)) {
+      Alert.alert(t('auth.missingInfo'), t('auth.invalidEmail'));
       return;
     }
     setBusy(true);
