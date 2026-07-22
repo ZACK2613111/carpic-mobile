@@ -69,8 +69,10 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint",
+    "typecheck": "tsc --noEmit",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "smoke": "node scripts/smoke-supabase.mjs"
   },
   "private": true
 }
