@@ -8,40 +8,52 @@ import { EmptyState } from '@/components/EmptyState';
 import { IconButton } from '@/components/IconButton';
 import { NotFound } from '@/components/NotFound';
 import { Text } from '@/components/Text';
-import { useBrand, watermarkVisible } from '@/features/branding/brand';
+import { useBrand, watermarkVisible, type WatermarkPosition } from '@/features/branding/brand';
 import { getSlot, localizedLabel } from '@/features/capture/shotTemplate';
 import { StudioCanvas } from '@/features/editor/StudioCanvas';
+import type { SpinData } from '@/features/projects/types';
+import { useProject } from '@/features/projects/useProjects';
 import type { Shot } from '@/features/shots/types';
 import { useShots, useShotSignedUrl } from '@/features/shots/useShots';
-import { useProject } from '@/features/projects/useProjects';
-import { useLocale, useT } from '@/lib/i18n';
+import { SpinViewer } from '@/features/spin/SpinViewer';
+import { useSpinFrames } from '@/features/spin/useSpin';
+import { useLocale, useT, type Locale } from '@/lib/i18n';
 import { useRouteId } from '@/lib/useRouteId';
 import { colors, radius, spacing } from '@/theme';
 
+type Page = { key: string; kind: 'spin'; spin: SpinData } | { key: string; kind: 'shot'; shot: Shot };
+
 /**
- * In-app buyer-style preview of a project's listing: each captured shot composed
- * exactly as it will publish (cutout on its background, ground shadow, pins,
- * plate, watermark) — so the seller can judge the render on their phone without
- * publishing. A horizontal pager keeps only the visible shot(s) decoded (the
- * same memory discipline as the editor).
+ * In-app buyer-style preview: swipe UP/DOWN through the finished listing — the
+ * 360 and each composed shot (cutout on its background, silhouette shadow, pins,
+ * plate, watermark) exactly as they publish. Vertical paging so the 360's
+ * horizontal drag-to-rotate never fights the pager, and only the visible page is
+ * decoded (editor-grade memory discipline).
  */
 export default function PreviewScreen() {
   const id = useRouteId() ?? '';
   const router = useRouter();
   const t = useT();
   const locale = useLocale();
+  const { width } = useWindowDimensions();
   const { data: project, isError, refetch } = useProject(id || undefined);
   const { data: shots } = useShots(id || undefined);
-  const { width } = useWindowDimensions();
+  const [containerH, setContainerH] = useState(0);
   const [index, setIndex] = useState(0);
 
   const brand = useBrand();
   const watermark = watermarkVisible(brand) ? { text: brand.text, position: brand.position } : undefined;
 
-  const captured = useMemo(
-    () => (shots ?? []).filter((s) => s.captured && s.image_path).sort((a, b) => a.position - b.position),
-    [shots]
-  );
+  const spin = project?.spin ?? null;
+  const pages = useMemo<Page[]>(() => {
+    const list: Page[] = [];
+    if (spin && spin.frameCount > 0) list.push({ key: 'spin', kind: 'spin', spin });
+    (shots ?? [])
+      .filter((s) => s.captured && s.image_path)
+      .sort((a, b) => a.position - b.position)
+      .forEach((s) => list.push({ key: s.id, kind: 'shot', shot: s }));
+    return list;
+  }, [spin, shots]);
 
   if (!id || isError) {
     return (
@@ -54,7 +66,7 @@ export default function PreviewScreen() {
   }
 
   const stageW = width;
-  const stageH = Math.round(width * 0.75); // 4:3, like the web viewer stage
+  const stageH = Math.round(width * 0.75);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -64,11 +76,11 @@ export default function PreviewScreen() {
           {project?.name || t('preview.title')}
         </Text>
         <Text variant="caption" muted style={styles.counter}>
-          {captured.length ? `${index + 1} / ${captured.length}` : ''}
+          {pages.length ? `${index + 1} / ${pages.length}` : ''}
         </Text>
       </View>
 
-      {captured.length === 0 ? (
+      {pages.length === 0 ? (
         <View style={styles.empty}>
           <EmptyState
             icon="image"
@@ -79,23 +91,44 @@ export default function PreviewScreen() {
           />
         </View>
       ) : (
-        <FlatList
-          data={captured}
-          keyExtractor={(s) => s.id}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          initialNumToRender={1}
-          maxToRenderPerBatch={1}
-          windowSize={3}
-          removeClippedSubviews={Platform.OS === 'android'}
-          onMomentumScrollEnd={(e) => setIndex(Math.round(e.nativeEvent.contentOffset.x / width))}
-          renderItem={({ item }) => (
-            <ShotPreview shot={item} width={stageW} height={stageH} locale={locale} watermark={watermark} />
-          )}
-        />
+        <View style={styles.pager} onLayout={(e) => setContainerH(Math.round(e.nativeEvent.layout.height))}>
+          {containerH > 0 ? (
+            <FlatList
+              data={pages}
+              keyExtractor={(p) => p.key}
+              pagingEnabled
+              showsVerticalScrollIndicator={false}
+              getItemLayout={(_, i) => ({ length: containerH, offset: containerH * i, index: i })}
+              initialNumToRender={1}
+              maxToRenderPerBatch={1}
+              windowSize={3}
+              removeClippedSubviews={Platform.OS === 'android'}
+              onMomentumScrollEnd={(e) => setIndex(Math.round(e.nativeEvent.contentOffset.y / containerH))}
+              renderItem={({ item }) => (
+                <View style={[styles.page, { height: containerH, width }]}>
+                  {item.kind === 'spin' ? (
+                    <SpinPreview spin={item.spin} projectId={id} width={stageW} height={stageH} label={t('project.spin360')} />
+                  ) : (
+                    <ShotPreview shot={item.shot} width={stageW} height={stageH} locale={locale} watermark={watermark} />
+                  )}
+                </View>
+              )}
+            />
+          ) : null}
+        </View>
       )}
     </SafeAreaView>
+  );
+}
+
+function Stage({ height, children, label }: { height: number; children: React.ReactNode; label: string }) {
+  return (
+    <>
+      <View style={[styles.stage, { height }]}>{children}</View>
+      <Text variant="bodyStrong" center style={styles.caption} numberOfLines={1}>
+        {label}
+      </Text>
+    </>
   );
 }
 
@@ -109,8 +142,8 @@ function ShotPreview({
   shot: Shot;
   width: number;
   height: number;
-  locale: ReturnType<typeof useLocale>;
-  watermark?: { text: string; position: import('@/features/branding/brand').WatermarkPosition };
+  locale: Locale;
+  watermark?: { text: string; position: WatermarkPosition };
 }) {
   const canvasRef = useCanvasRef(); // required by StudioCanvas (export ref); unused here
   const { data: originalUri } = useShotSignedUrl(shot.image_path);
@@ -119,30 +152,60 @@ function ShotPreview({
   const ready = Boolean(originalUri || cutoutUri);
 
   return (
+    <Stage height={height} label={slot ? localizedLabel(slot, locale) : shot.slot}>
+      {ready ? (
+        <StudioCanvas
+          width={width}
+          height={height}
+          canvasRef={canvasRef}
+          originalUri={originalUri ?? null}
+          cutoutUri={cutoutUri ?? null}
+          backgroundId={shot.background_id}
+          hotspots={shot.doc?.hotspots ?? []}
+          selectedId={null}
+          shadow={shot.doc?.shadow}
+          plate={shot.doc?.plate}
+          plateSelected={false}
+          watermark={watermark}
+        />
+      ) : (
+        <ActivityIndicator color={colors.primary} />
+      )}
+    </Stage>
+  );
+}
+
+function SpinPreview({
+  spin,
+  projectId,
+  width,
+  height,
+  label,
+}: {
+  spin: SpinData;
+  projectId: string;
+  width: number;
+  height: number;
+  label: string;
+}) {
+  const { data: frameUrls } = useSpinFrames(projectId, spin.frameCount, Boolean(spin.hasCutout));
+  const ready = Boolean(frameUrls && frameUrls.length);
+
+  return (
     <View style={{ width }}>
-      <View style={[styles.stage, { height }]}>
+      <Stage height={height} label={label}>
         {ready ? (
-          <StudioCanvas
-            width={width}
-            height={height}
-            canvasRef={canvasRef}
-            originalUri={originalUri ?? null}
-            cutoutUri={cutoutUri ?? null}
-            backgroundId={shot.background_id}
-            hotspots={shot.doc?.hotspots ?? []}
-            selectedId={null}
-            shadow={shot.doc?.shadow}
-            plate={shot.doc?.plate}
-            plateSelected={false}
-            watermark={watermark}
+          <SpinViewer
+            frameUrls={frameUrls ?? []}
+            cutout={spin.hasCutout}
+            backgroundId={spin.backgroundId}
+            shadow={spin.shadow}
+            hotspots={spin.hotspots ?? []}
           />
         ) : (
           <ActivityIndicator color={colors.primary} />
         )}
-      </View>
-      <Text variant="bodyStrong" center style={styles.caption} numberOfLines={1}>
-        {slot ? localizedLabel(slot, locale) : shot.slot}
-      </Text>
+      </Stage>
     </View>
   );
 }
@@ -161,8 +224,10 @@ const styles = StyleSheet.create({
   title: { flex: 1, textAlign: 'center' },
   counter: { minWidth: 44, textAlign: 'right', paddingRight: spacing.sm },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  pager: { flex: 1 },
+  page: { alignItems: 'center', justifyContent: 'center' },
   stage: {
-    marginTop: spacing.xl,
+    width: '100%',
     borderRadius: radius.lg,
     overflow: 'hidden',
     backgroundColor: colors.surfaceAlt,
