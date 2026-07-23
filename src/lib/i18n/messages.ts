@@ -175,6 +175,10 @@ const en = {
   'project.uploading': 'uploading',
   'project.notCaptured': 'not captured',
 
+  'preview.title': 'Preview',
+  'preview.hint': 'See the render',
+  'preview.empty': 'Nothing to preview yet',
+
   'common.close': 'Close',
 
   'editor.shotFallback': 'Shot',
@@ -487,6 +491,10 @@ const fr: Record<MessageKey, string> = {
   'project.uploading': 'en envoi',
   'project.notCaptured': 'à prendre',
 
+  'preview.title': 'Aperçu',
+  'preview.hint': 'Voir le rendu',
+  'preview.empty': 'Rien à prévisualiser',
+
   'common.close': 'Fermer',
 
   'editor.shotFallback': 'Photo',
@@ -795,6 +803,10 @@ const ar: Record<MessageKey, string> = {
   'project.captured': 'ملتقطة',
   'project.uploading': 'قيد الرفع',
   'project.notCaptured': 'غير ملتقطة',
+
+  'preview.title': 'معاينة',
+  'preview.hint': 'شاهد النتيجة',
+  'preview.empty': 'لا شيء للمعاينة بعد',
 
   'common.close': 'إغلاق',
 

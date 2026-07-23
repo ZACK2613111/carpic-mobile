@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { Chip } from '@/components/Chip';
-import { Icon } from '@/components/Icon';
+import { Icon, type IconName } from '@/components/Icon';
 import { IconButton } from '@/components/IconButton';
 import { NotFound } from '@/components/NotFound';
 import { PressableScale } from '@/components/PressableScale';
@@ -263,6 +263,12 @@ export default function ProjectDashboard() {
           </View>
           <View style={styles.actionRow}>
             <ActionTile
+              icon="image"
+              label={t('preview.title')}
+              hint={t('preview.hint')}
+              onPress={() => router.push({ pathname: '/preview/[id]', params: { id } })}
+            />
+            <ActionTile
               icon="camera"
               label={t('project.requestPhotos')}
               hint={requesting ? t('project.preparing') : t('project.ownerShoots')}
@@ -367,7 +373,7 @@ function ActionTile({
   hint,
   onPress,
 }: {
-  icon: 'refresh' | 'share' | 'camera';
+  icon: IconName;
   label: string;
   hint?: string;
   onPress: () => void;
