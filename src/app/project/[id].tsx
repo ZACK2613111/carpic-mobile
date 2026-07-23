@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, Share, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -97,7 +98,8 @@ export default function ProjectDashboard() {
     try {
       const link = await getOrCreateCaptureLink(id);
       const url = captureLinkUrl(link);
-      await Share.share({ message: url, url });
+      const result = await Share.share({ message: url, url });
+      if (result.action === Share.sharedAction) toast.show(t('project.captureLinkShared'), 'success');
     } catch (e) {
       toast.show(e instanceof Error ? e.message : t('project.linkFailed'), 'error');
     } finally {
@@ -121,6 +123,21 @@ export default function ProjectDashboard() {
       toast.show(e instanceof Error ? e.message : t('project.publishFailed'), 'error');
     }
   }, [project, shots, capturedCount, toast, t]);
+
+  // Re-open / re-share the existing published listing without re-publishing —
+  // the shared link is the product, so it must be one tap away once live.
+  const publishedUrl = project?.published_url ?? null;
+  const openPublished = useCallback(() => {
+    if (publishedUrl) void WebBrowser.openBrowserAsync(publishedUrl);
+  }, [publishedUrl]);
+  const sharePublished = useCallback(async () => {
+    if (!publishedUrl) return;
+    try {
+      await Share.share({ message: publishedUrl, url: publishedUrl });
+    } catch {
+      // user dismissed the share sheet — nothing to do
+    }
+  }, [publishedUrl]);
 
   const openSlot = (slot: ShotSlot) => {
     const shot = bySlot[slot.id];
@@ -203,6 +220,20 @@ export default function ProjectDashboard() {
                   onPress={() => failedUploads.forEach((u) => discardFailedUpload(u.id))}
                   style={styles.skFlex}
                 />
+              </View>
+            </View>
+          ) : null}
+
+          {/* published listing — re-open / re-share without re-publishing */}
+          {project?.status === 'published' && publishedUrl ? (
+            <View style={styles.liveCard}>
+              <View style={styles.liveTop}>
+                <View style={styles.liveDot} />
+                <Text variant="bodyStrong">{t('project.listingLive')}</Text>
+              </View>
+              <View style={styles.actionRow}>
+                <Button title={t('project.open')} variant="secondary" onPress={openPublished} style={styles.skFlex} />
+                <Button title={t('project.share')} icon="share" onPress={sharePublished} style={styles.skFlex} />
               </View>
             </View>
           ) : null}
@@ -503,6 +534,17 @@ const styles = StyleSheet.create({
     ...shadow.sm,
   },
   failedActions: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.xs },
+  liveCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+    gap: spacing.md,
+    ...shadow.sm,
+  },
+  liveTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success },
   track: { height: 8, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, overflow: 'hidden' },
   fill: { height: 8, borderRadius: radius.pill, backgroundColor: colors.primary },
   actionRow: { flexDirection: 'row', gap: spacing.md },
