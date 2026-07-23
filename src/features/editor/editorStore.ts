@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-import type { EditorMode, Hotspot, PlateMask } from '@/features/projects/types';
+import type { CutoutBounds, EditorMode, Hotspot, PlateMask } from '@/features/projects/types';
 import { clamp01, createHotspot } from './hotspots';
 import { movePlate, resizePlate } from './plateMask';
 
@@ -25,6 +25,7 @@ type LoadPayload = {
   hotspots: Hotspot[];
   shadow?: boolean;
   plate?: PlateMask;
+  bounds?: CutoutBounds;
 };
 
 type EditorState = {
@@ -40,6 +41,8 @@ type EditorState = {
   shadow?: boolean;
   /** License-plate mask; undefined = none. */
   plate?: PlateMask;
+  /** Normalized alpha bounds of the cutout (for the published viewer's shadow/reflection). */
+  bounds?: CutoutBounds;
   /** Whether the plate (not a pin) is the current selection. */
   plateSelected: boolean;
   dirty: boolean;
@@ -56,6 +59,7 @@ type EditorState = {
   setShadow: (shadow: boolean) => void;
   setOriginalUri: (uri: string | null) => void;
   setCutout: (uri: string) => void;
+  setBounds: (bounds: CutoutBounds | undefined) => void;
 
   setPlate: (plate: PlateMask | undefined) => void;
   patchPlate: (patch: Partial<Omit<PlateMask, 'x' | 'y'>>) => void;
@@ -88,6 +92,7 @@ const initial = {
   selectedId: null as string | null,
   shadow: undefined as boolean | undefined,
   plate: undefined as PlateMask | undefined,
+  bounds: undefined as CutoutBounds | undefined,
   plateSelected: false,
   dirty: false,
   hydrated: false,
@@ -124,6 +129,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
         hotspots: p.hotspots,
         shadow: p.shadow,
         plate: p.plate,
+        bounds: p.bounds,
         selectedId: null,
         plateSelected: false,
         dirty: false,
@@ -149,6 +155,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
     },
     setOriginalUri: (originalUri) => set({ originalUri }),
     setCutout: (uri) => set({ cutoutUri: uri, dirty: true }),
+    setBounds: (bounds) => set({ bounds, dirty: true }),
 
     setPlate: (plate) => {
       pushHistory();

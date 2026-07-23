@@ -17,8 +17,12 @@ export const BACKGROUND_PRESETS: BackgroundPreset[] = [
   { id: 'grad-ocean', name: 'Ocean', kind: 'gradient', colors: ['#1E3C72', '#2A5298'] },
   { id: 'grad-sunset', name: 'Sunset', kind: 'gradient', colors: ['#F7971E', '#FFD200'] },
   { id: 'grad-graphite', name: 'Graphite', kind: 'gradient', colors: ['#232526', '#414345'] },
+  { id: 'grad-midnight', name: 'Midnight', kind: 'gradient', colors: ['#0F2027', '#2C5364'] },
   { id: 'studio-graphite', name: 'Studio Dark', kind: 'studio', wall: '#3A3F47', floor: '#0F1114', light: '#6B7686' },
+  { id: 'studio-charcoal', name: 'Studio Charcoal', kind: 'studio', wall: '#2A2E35', floor: '#14171C', light: '#8A94A6' },
   { id: 'studio-showroom', name: 'Showroom', kind: 'studio', wall: '#E9EDF2', floor: '#C3CCD6', light: '#FFFFFF' },
+  { id: 'studio-warm', name: 'Warm Studio', kind: 'studio', wall: '#EFE7DD', floor: '#D6CABA', light: '#FFF1DE' },
+  { id: 'studio-concrete', name: 'Concrete', kind: 'studio', wall: '#B7BCC4', floor: '#8B9199', light: '#E9EDF2' },
   { id: 'studio-blue', name: 'Studio Blue', kind: 'studio', wall: '#1B2A4A', floor: '#0A1122', light: '#3E63C8' },
 ];
 

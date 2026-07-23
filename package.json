@@ -3,9 +3,7 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "dependencies": {
-    "@expo-google-fonts/inter": "^0.4.2",
     "@expo-google-fonts/sora": "^0.4.2",
-    "@expo/ui": "~57.0.3",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/netinfo": "12.0.1",
     "@shopify/react-native-skia": "2.6.2",
@@ -25,7 +23,6 @@
     "expo-device": "~57.0.0",
     "expo-file-system": "~57.0.0",
     "expo-font": "~57.0.0",
-    "expo-glass-effect": "~57.0.0",
     "expo-haptics": "~57.0.0",
     "expo-image": "~57.0.0",
     "expo-image-manipulator": "~57.0.2",
@@ -33,13 +30,13 @@
     "expo-keep-awake": "~57.0.0",
     "expo-linear-gradient": "~57.0.0",
     "expo-linking": "~57.0.1",
+    "expo-localization": "~57.0.1",
     "expo-media-library": "~57.0.1",
     "expo-router": "~57.0.3",
     "expo-sensors": "~57.0.2",
     "expo-sharing": "~57.0.2",
     "expo-splash-screen": "~57.0.2",
     "expo-status-bar": "~57.0.0",
-    "expo-symbols": "~57.0.0",
     "expo-system-ui": "~57.0.0",
     "expo-web-browser": "~57.0.0",
     "react": "19.2.3",
@@ -72,8 +69,10 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint",
+    "typecheck": "tsc --noEmit",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "smoke": "node scripts/smoke-supabase.mjs"
   },
   "private": true
 }

@@ -10,13 +10,20 @@ import { useEditorStore } from './editorStore';
  * shot id; a store already hydrated for this shot (e.g. returning from another
  * screen) is left untouched so in-flight edits are never clobbered.
  */
-export function useShotHydration(shot: Shot | undefined) {
+export function useShotHydration(shot: Shot | undefined, reloadKey = 0) {
   const load = useEditorStore((s) => s.load);
   const storeProjectId = useEditorStore((s) => s.projectId);
   const hydrated = useEditorStore((s) => s.hydrated);
   const hydratedRef = useRef<string | null>(null);
+  const reloadRef = useRef(reloadKey);
 
   useEffect(() => {
+    // A bumped reloadKey (e.g. the user retrying after a failed image load)
+    // forces a fresh hydrate; harmless no-op while the key never changes.
+    if (reloadRef.current !== reloadKey) {
+      reloadRef.current = reloadKey;
+      hydratedRef.current = null;
+    }
     if (!shot) return;
     if (storeProjectId === shot.id && hydrated) {
       hydratedRef.current = shot.id;
@@ -40,7 +47,8 @@ export function useShotHydration(shot: Shot | undefined) {
         hotspots: shot.doc?.hotspots ?? [],
         shadow: shot.doc?.shadow,
         plate: shot.doc?.plate,
+        bounds: shot.doc?.bounds,
       });
     })();
-  }, [shot, storeProjectId, hydrated, load]);
+  }, [shot, storeProjectId, hydrated, load, reloadKey]);
 }

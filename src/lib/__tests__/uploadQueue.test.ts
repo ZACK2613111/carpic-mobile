@@ -1,4 +1,9 @@
-import { createUploadQueue, type UploadQueueDeps, type UploadTask } from '../uploadQueue/core';
+import {
+  createUploadQueue,
+  isPermanentUploadError,
+  type UploadQueueDeps,
+  type UploadTask,
+} from '../uploadQueue/core';
 
 function makeDeps() {
   const state: { saved: UploadTask[] | null } = { saved: null };
@@ -150,5 +155,95 @@ describe('uploadQueue core', () => {
 
     expect(notified).toBeGreaterThanOrEqual(2); // enqueue + completion
     unsubscribe();
+  });
+});
+
+describe('uploadQueue dead-letter', () => {
+  it('dead-letters a permanent (4xx) failure instead of retrying forever', async () => {
+    const { deps, timers } = makeDeps();
+    const q = createUploadQueue(deps);
+    q.registerHandler('shot', async () => {
+      throw { status: 403, message: 'row-level security' }; // RLS denial — permanent
+    });
+
+    await q.enqueue(input());
+    await q.drain();
+
+    expect(q.getPending()).toHaveLength(0); // no longer in the retry set
+    expect(q.getFailed()).toHaveLength(1);
+    expect(q.getFailed()[0].failed).toBe(true);
+    expect(timers).toHaveLength(0); // no retry scheduled — the bug this fixes
+  });
+
+  it('keeps retrying a transient failure and never dead-letters it', async () => {
+    const { deps, timers } = makeDeps();
+    const q = createUploadQueue(deps);
+    q.registerHandler('shot', async () => {
+      throw new Error('network down'); // no status → transient (offline-first)
+    });
+
+    await q.enqueue(input());
+    await q.drain();
+
+    expect(q.getPending()).toHaveLength(1);
+    expect(q.getFailed()).toHaveLength(0);
+    expect(timers).toHaveLength(1); // still scheduled to retry
+  });
+
+  it('retryFailed re-queues dead-lettered tasks and drains them (e.g. after re-auth)', async () => {
+    const { deps } = makeDeps();
+    const q = createUploadQueue(deps);
+    let calls = 0;
+    q.registerHandler('shot', async () => {
+      calls += 1;
+      if (calls === 1) throw { status: 401 }; // permanent first time (expired session)
+    });
+
+    await q.enqueue(input());
+    await q.drain();
+    expect(q.getFailed()).toHaveLength(1);
+
+    q.retryFailed();
+    await q.drain();
+
+    expect(calls).toBe(2);
+    expect(q.getFailed()).toHaveLength(0);
+    expect(q.getPending()).toHaveLength(0);
+  });
+
+  it('discardFailed drops a dead-lettered task and its outbox file', async () => {
+    const { deps, files } = makeDeps();
+    const q = createUploadQueue(deps);
+    q.registerHandler('shot', async () => {
+      throw { status: 413 }; // payload too large — permanent
+    });
+
+    await q.enqueue(input());
+    await q.drain();
+    expect(files.has('id-1.jpg')).toBe(true);
+
+    q.discardFailed(q.getFailed()[0].id);
+
+    expect(q.getFailed()).toHaveLength(0);
+    expect(files.has('id-1.jpg')).toBe(false);
+  });
+});
+
+describe('isPermanentUploadError', () => {
+  it('treats 4xx (except 408/429) and RLS as permanent', () => {
+    expect(isPermanentUploadError({ status: 400 })).toBe(true);
+    expect(isPermanentUploadError({ status: 403 })).toBe(true);
+    expect(isPermanentUploadError({ status: 413 })).toBe(true);
+    expect(isPermanentUploadError({ statusCode: '404' })).toBe(true);
+    expect(isPermanentUploadError({ code: '42501' })).toBe(true); // Postgrest RLS
+  });
+
+  it('treats network / 5xx / 408 / 429 / unknown as transient', () => {
+    expect(isPermanentUploadError(new Error('network'))).toBe(false);
+    expect(isPermanentUploadError({ status: 500 })).toBe(false);
+    expect(isPermanentUploadError({ status: 408 })).toBe(false);
+    expect(isPermanentUploadError({ status: 429 })).toBe(false);
+    expect(isPermanentUploadError(null)).toBe(false);
+    expect(isPermanentUploadError(undefined)).toBe(false);
   });
 });

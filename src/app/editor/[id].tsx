@@ -1,6 +1,6 @@
 import { useCanvasRef } from '@shopify/react-native-skia';
 import { useRouter } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
 import Animated from 'react-native-reanimated';
@@ -19,10 +19,12 @@ import { useBackgroundRemoval } from '@/features/background-removal/useBackgroun
 import { useBrand, watermarkVisible } from '@/features/branding/brand';
 import { BackgroundStrip } from '@/features/editor/BackgroundStrip';
 import { getBackground } from '@/features/editor/backgrounds';
+import { computeAlphaBoundsFromUri } from '@/features/editor/cutoutBounds';
 import { CoachMarks } from '@/features/editor/CoachMarks';
 import { EngineAudio } from '@/features/editor/EngineAudio';
 import { useEditorStore } from '@/features/editor/editorStore';
 import { shadowEnabled } from '@/features/editor/groundShadow';
+import { pickAndUploadHotspotPhoto } from '@/features/editor/hotspotPhoto';
 import { HotspotSheet } from '@/features/editor/HotspotSheet';
 import { NudgePad } from '@/features/editor/NudgePad';
 import { defaultPlate } from '@/features/editor/plateMask';
@@ -35,10 +37,12 @@ import { getSlot } from '@/features/capture/shotTemplate';
 import { uploadShotAsset } from '@/features/shots/shots.api';
 import { useShot, useShotSignedUrl, useUpdateShot } from '@/features/shots/useShots';
 import { haptics } from '@/lib/haptics';
+import { useT } from '@/lib/i18n';
+import { captureException } from '@/lib/reporting';
 import { useCoachMarks } from '@/lib/useCoachMarks';
 import { useDebouncedAutosave } from '@/lib/useDebouncedAutosave';
 import { useRouteId } from '@/lib/useRouteId';
-import { colors, radius, spacing } from '@/theme';
+import { colors, radius, shadow as elevation, spacing } from '@/theme';
 
 const COACH_KEY = 'editor-coach-v1';
 
@@ -47,6 +51,8 @@ export default function EditorScreen() {
   const router = useRouter();
   const canvasRef = useCanvasRef();
   const toast = useToast();
+  const t = useT();
+  const [reloadKey, setReloadKey] = useState(0);
 
   const { data: shot, isLoading: shotLoading, isError: shotError, refetch: refetchShot } = useShot(id ?? undefined);
   const updateShot = useUpdateShot();
@@ -91,7 +97,13 @@ export default function EditorScreen() {
   const watermark = watermarkVisible(brand) ? { text: brand.text, position: brand.position } : undefined;
 
   // ---- composition: hydration, coach marks, gestures, export ----
-  useShotHydration(shot);
+  useShotHydration(shot, reloadKey);
+  // Retry a failed image load: reset the store (clears the cached null URLs) and
+  // bump the reload key so hydration runs again — no more infinite spinner.
+  const retryHydrate = useCallback(() => {
+    useEditorStore.getState().reset();
+    setReloadKey((k) => k + 1);
+  }, []);
   const coach = useCoachMarks(COACH_KEY);
   const { canvasSize, onCanvasLayout, gesture, contentStyle, zoomed, resetZoom } = useCanvasGestures({
     editable: !removing && !coach.visible,
@@ -114,6 +126,7 @@ export default function EditorScreen() {
             hotspots: s.hotspots,
             ...(s.shadow !== undefined ? { shadow: s.shadow } : {}),
             ...(s.plate ? { plate: s.plate } : {}),
+            ...(s.bounds ? { bounds: s.bounds } : {}),
           },
         },
       });
@@ -125,32 +138,38 @@ export default function EditorScreen() {
   const onCutout = useCallback(async () => {
     const s = useEditorStore.getState();
     if (!s.originalUri) {
-      Alert.alert('No photo', 'Add a car photo first.');
+      Alert.alert(t('editor.noPhotoTitle'), t('editor.noPhotoBody'));
       return;
     }
     try {
       const cut = await remove(s.originalUri);
       setCutout(cut);
       haptics.success();
-      toast.show('Background removed', 'success');
+      toast.show(t('editor.bgRemoved'), 'success');
+      // Persist the cutout's alpha footprint so the published viewer can place
+      // an accurate shadow/reflection (best-effort; the editor shadow is live).
+      void computeAlphaBoundsFromUri(cut).then((b) => {
+        if (b) useEditorStore.getState().setBounds(b.norm);
+      });
       if (shot) {
         try {
           const path = await uploadShotAsset(shot.project_id, shot.slot, 'cutout', cut, 'image/png');
           await updateShot.mutateAsync({ id: shot.id, patch: { cutout_path: path } });
         } catch (uploadErr) {
-          console.warn('[editor] cutout upload failed', uploadErr);
+          captureException(uploadErr, { context: 'cutout-upload' });
+          toast.show(t('editor.cutoutSaveFailed'), 'error');
         }
       }
     } catch (e) {
       haptics.error();
-      const msg = e instanceof Error ? e.message : 'Background removal failed';
+      const msg = e instanceof Error ? e.message : t('editor.bgRemovalFailed');
       if (msg.includes('REQUIRES_API_FALLBACK')) {
-        Alert.alert('Unsupported device', 'On-device cutout needs iOS 17+ (or an Android device with ML Kit).');
+        Alert.alert(t('editor.unsupportedTitle'), t('editor.unsupportedBody'));
       } else {
-        Alert.alert('Cut out failed', msg);
+        Alert.alert(t('editor.cutoutFailedTitle'), msg);
       }
     }
-  }, [remove, setCutout, toast, updateShot, shot]);
+  }, [remove, setCutout, toast, updateShot, shot, t]);
 
   const onEngineRecorded = useCallback(
     async (uri: string) => {
@@ -158,12 +177,12 @@ export default function EditorScreen() {
       try {
         const path = await uploadShotAsset(shot.project_id, shot.slot, 'audio', uri, 'audio/m4a');
         await updateShot.mutateAsync({ id: shot.id, patch: { audio_path: path } });
-        toast.show('Engine sound saved', 'success');
+        toast.show(t('editor.engineSaved'), 'success');
       } catch (e) {
-        toast.show(e instanceof Error ? e.message : 'Could not save audio', 'error');
+        toast.show(e instanceof Error ? e.message : t('editor.audioSaveFailed'), 'error');
       }
     },
-    [shot, updateShot, toast]
+    [shot, updateShot, toast, t]
   );
 
   const onPlateToggle = useCallback(() => {
@@ -185,8 +204,8 @@ export default function EditorScreen() {
   if (!id || shotError || (!shotLoading && !shot)) {
     return (
       <NotFound
-        title="Shot unavailable"
-        subtitle={shotError ? "This shot couldn't be loaded." : 'This shot no longer exists.'}
+        title={t('editor.shotUnavailable')}
+        subtitle={shotError ? t('editor.shotLoadFailed') : t('editor.shotGone')}
         onRetry={shotError ? () => void refetchShot() : undefined}
       />
     );
@@ -196,21 +215,21 @@ export default function EditorScreen() {
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       {/* Header */}
       <View style={styles.header}>
-        <IconButton name="back" variant="ghost" accessibilityLabel="Go back" onPress={() => router.back()} />
-        <Text numberOfLines={1} style={styles.name}>
-          {name || 'Shot'}
+        <IconButton name="back" variant="ghost" accessibilityLabel={t('common.back')} onPress={() => router.back()} />
+        <Text variant="heading" numberOfLines={1} style={styles.name}>
+          {name || t('editor.shotFallback')}
         </Text>
         <IconButton
           name="undo"
           variant="ghost"
-          accessibilityLabel="Undo"
+          accessibilityLabel={t('editor.undo')}
           onPress={() => useEditorStore.getState().undo()}
           disabled={!canUndo}
         />
         <IconButton
           name="redo"
           variant="ghost"
-          accessibilityLabel="Redo"
+          accessibilityLabel={t('editor.redo')}
           onPress={() => useEditorStore.getState().redo()}
           disabled={!canRedo}
         />
@@ -222,20 +241,20 @@ export default function EditorScreen() {
           value={mode}
           onChange={setMode}
           options={[
-            { value: 'marketing', label: 'Marketing', icon: 'sparkles' },
-            { value: 'inspection', label: 'Inspection', icon: 'wrench' },
+            { value: 'marketing', label: t('hotspot.marketing'), icon: 'sparkles' },
+            { value: 'inspection', label: t('hotspot.inspection'), icon: 'wrench' },
           ]}
         />
       </View>
       <View style={styles.infoRow}>
         <Text variant="caption" faint>
-          {hotspots.length} hotspot{hotspots.length === 1 ? '' : 's'}
+          {t(hotspots.length === 1 ? 'editor.hotspotsOne' : 'editor.hotspotsMany', { n: hotspots.length })}
         </Text>
         <Text
           variant="caption"
           color={saveStatus === 'failed' ? colors.danger : saving ? colors.warning : colors.textMuted}
         >
-          {saveStatus === 'failed' ? 'Save failed — retrying…' : saving ? 'Saving…' : 'Saved'}
+          {saveStatus === 'failed' ? t('editor.saveFailed') : saving ? t('editor.saving') : t('editor.saved')}
         </Text>
       </View>
 
@@ -268,7 +287,7 @@ export default function EditorScreen() {
 
           {zoomed ? (
             <View style={styles.zoomReset}>
-              <IconButton name="zoomIn" variant="surface" size={40} accessibilityLabel="Reset zoom" onPress={resetZoom} />
+              <IconButton name="zoomIn" variant="surface" size={40} accessibilityLabel={t('editor.resetZoom')} onPress={resetZoom} />
             </View>
           ) : null}
 
@@ -285,24 +304,35 @@ export default function EditorScreen() {
 
           {originalUri && hotspots.length === 0 && !zoomed && !removing ? (
             <View style={styles.tapHint} pointerEvents="none">
-              <Text variant="caption" style={styles.tapHintText}>
-                Tap the car to add a hotspot
+              <Text variant="caption" muted>
+                {t('editor.tapHint')}
               </Text>
             </View>
           ) : null}
 
           {!originalUri ? (
-            <View style={styles.centerOverlay} pointerEvents="none">
-              <ActivityIndicator color={colors.primary} />
-            </View>
+            hydrated ? (
+              // Hydration finished but the signed photo URL never resolved
+              // (transient storage/network error) — offer a retry, not a hang.
+              <View style={styles.loadError}>
+                <Text variant="body" muted center>
+                  {t('editor.photoLoadFailed')}
+                </Text>
+                <Button title={t('common.retry')} icon="refresh" variant="secondary" onPress={retryHydrate} />
+              </View>
+            ) : (
+              <View style={styles.centerOverlay} pointerEvents="none">
+                <ActivityIndicator color={colors.primary} />
+              </View>
+            )
           ) : null}
 
           {removing ? (
             <View style={styles.progress}>
               <ActivityIndicator color={colors.primary} size="large" />
-              <Text variant="bodyStrong">Removing background…</Text>
+              <Text variant="bodyStrong">{t('editor.removingBg')}</Text>
               <Text variant="caption" muted>
-                Running on your device
+                {t('editor.onDevice')}
               </Text>
             </View>
           ) : null}
@@ -315,7 +345,7 @@ export default function EditorScreen() {
           {hasCutout && !isTransparent ? (
             <ToggleChip
               icon="sparkles"
-              label={`Shadow ${shadowOn ? 'on' : 'off'}`}
+              label={`${t('editor.shadow')} ${shadowOn ? t('common.on') : t('common.off')}`}
               active={shadowOn}
               onPress={() => {
                 haptics.selection();
@@ -325,7 +355,7 @@ export default function EditorScreen() {
           ) : null}
           <ToggleChip
             icon="crosshair"
-            label={plate ? 'Plate masked' : 'Plate mask'}
+            label={plate ? t('editor.plateMasked') : t('editor.plateMask')}
             active={Boolean(plate)}
             onPress={onPlateToggle}
           />
@@ -345,14 +375,14 @@ export default function EditorScreen() {
       {/* Toolbar */}
       <View style={styles.toolbar}>
         <Button
-          title={hasCutout ? 'Re-cut' : 'Cut out'}
+          title={hasCutout ? t('editor.reCut') : t('editor.cutOut')}
           icon="scissors"
           onPress={onCutout}
           loading={removing}
           style={styles.flex}
         />
         <Button
-          title="Export"
+          title={t('editor.export')}
           icon="share"
           variant="secondary"
           onPress={onExportPress}
@@ -365,6 +395,11 @@ export default function EditorScreen() {
       <HotspotSheet
         hotspot={selected}
         onChange={(patch) => selected && updateHotspot(selected.id, patch)}
+        onPickPhoto={
+          selected && shot
+            ? () => pickAndUploadHotspotPhoto(shot.project_id, `${shot.slot}-${selected.id}`)
+            : undefined
+        }
         onDelete={() => {
           if (selected) {
             haptics.medium();
@@ -408,8 +443,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
     gap: spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.hairline,
   },
-  name: { flex: 1, color: colors.text, fontSize: 17, fontWeight: '700', textAlign: 'center' },
+  name: { flex: 1, textAlign: 'center' },
   modeRow: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs },
   infoRow: {
     flexDirection: 'row',
@@ -429,16 +466,30 @@ const styles = StyleSheet.create({
   },
   canvasContent: { flex: 1 },
   centerOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
+  loadError: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.md,
+    padding: spacing.xl,
+  },
   zoomReset: { position: 'absolute', top: spacing.sm, right: spacing.sm },
   nudge: { position: 'absolute', left: spacing.sm, bottom: spacing.sm },
-  tapHint: { position: 'absolute', bottom: spacing.md, alignSelf: 'center' },
-  tapHintText: {
-    color: colors.text,
-    backgroundColor: colors.scrim,
+  tapHint: {
+    position: 'absolute',
+    bottom: spacing.md,
+    alignSelf: 'center',
+    backgroundColor: colors.elevated,
+    borderWidth: 1,
+    borderColor: colors.border,
     paddingHorizontal: spacing.md,
     paddingVertical: 6,
     borderRadius: radius.pill,
-    overflow: 'hidden',
+    ...elevation.sm,
   },
   progress: {
     position: 'absolute',

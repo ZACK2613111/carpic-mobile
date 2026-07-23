@@ -12,6 +12,8 @@ export type Hotspot = {
   description?: string;
   /** inspection hotspots only. */
   severity?: Severity;
+  /** optional close-up detail photo — storage path in the private projects bucket. */
+  photoPath?: string;
 };
 
 export type PlateStyle = 'blur' | 'brand';
@@ -27,6 +29,9 @@ export type PlateMask = {
   color?: string;
 };
 
+/** Normalized (0..1) bounding box of a cutout's opaque pixels. */
+export type CutoutBounds = { x: number; y: number; width: number; height: number };
+
 export type ProjectDoc = {
   version: number;
   hotspots: Hotspot[];
@@ -34,6 +39,12 @@ export type ProjectDoc = {
   shadow?: boolean;
   /** License-plate mask; undefined = none. */
   plate?: PlateMask;
+  /**
+   * Alpha bounds of the cutout, so the published web viewer can place the
+   * ground shadow + reflection under the real car (it can't scan the
+   * cross-origin image itself). Absent for un-cut or older shots.
+   */
+  bounds?: CutoutBounds;
 };
 
 export type ProjectStatus = 'draft' | 'ready' | 'published';
@@ -127,6 +138,13 @@ function isPlate(value: unknown): value is PlateMask {
   );
 }
 
+function isBounds(value: unknown): value is CutoutBounds {
+  if (!value || typeof value !== 'object') return false;
+  const b = value as Record<string, unknown>;
+  const n01 = (n: unknown) => typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= 1;
+  return n01(b.x) && n01(b.y) && n01(b.width) && n01(b.height) && (b.width as number) > 0 && (b.height as number) > 0;
+}
+
 export function coerceDoc(value: unknown): ProjectDoc {
   if (!value || typeof value !== 'object') return EMPTY_DOC;
   const v = value as Partial<ProjectDoc>;
@@ -135,6 +153,7 @@ export function coerceDoc(value: unknown): ProjectDoc {
     hotspots: Array.isArray(v.hotspots) ? v.hotspots.filter(isHotspot) : [],
     ...(typeof v.shadow === 'boolean' ? { shadow: v.shadow } : {}),
     ...(isPlate(v.plate) ? { plate: v.plate } : {}),
+    ...(isBounds(v.bounds) ? { bounds: v.bounds } : {}),
   };
 }
 

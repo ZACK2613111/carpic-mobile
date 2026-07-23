@@ -5,39 +5,41 @@ import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Button } from '@/components/Button';
 import { Icon, type IconName } from '@/components/Icon';
 import { Text } from '@/components/Text';
+import { useT, type MessageKey } from '@/lib/i18n';
 import { colors, radius, spacing } from '@/theme';
 
-const STEPS: { icon: IconName; title: string; body: string }[] = [
-  { icon: 'scissors', title: 'Cut out', body: 'Tap Cut out to remove the background instantly, on your device.' },
-  { icon: 'layers', title: 'Backgrounds', body: 'Choose transparent, a color, or a studio scene from the strip.' },
-  { icon: 'crosshair', title: 'Hotspots', body: 'Tap the photo to drop a pin. Drag it, or use the arrows for precision.' },
-  { icon: 'zoomIn', title: 'Zoom', body: 'Pinch with two fingers to zoom in for precise placement.' },
-  { icon: 'share', title: 'Export', body: 'Share your finished shot or save it to your photos.' },
+const STEPS: { icon: IconName; titleKey: MessageKey; bodyKey: MessageKey }[] = [
+  { icon: 'scissors', titleKey: 'coach.cutoutTitle', bodyKey: 'coach.cutoutBody' },
+  { icon: 'layers', titleKey: 'coach.bgTitle', bodyKey: 'coach.bgBody' },
+  { icon: 'crosshair', titleKey: 'coach.hotspotsTitle', bodyKey: 'coach.hotspotsBody' },
+  { icon: 'zoomIn', titleKey: 'coach.zoomTitle', bodyKey: 'coach.zoomBody' },
+  { icon: 'share', titleKey: 'coach.exportTitle', bodyKey: 'coach.exportBody' },
 ];
 
 export function CoachMarks({ onDismiss }: { onDismiss: () => void }) {
+  const t = useT();
   return (
     <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(160)} style={styles.overlay}>
       <View style={styles.card}>
         <Text variant="heading" center>
-          Welcome to the studio ✨
+          {t('coach.welcome')}
         </Text>
         <View style={styles.steps}>
           {STEPS.map((s) => (
-            <View key={s.title} style={styles.step}>
+            <View key={s.titleKey} style={styles.step}>
               <View style={styles.stepIcon}>
                 <Icon name={s.icon} size={20} color={colors.primary} />
               </View>
               <View style={styles.stepText}>
-                <Text variant="bodyStrong">{s.title}</Text>
+                <Text variant="bodyStrong">{t(s.titleKey)}</Text>
                 <Text variant="caption" muted>
-                  {s.body}
+                  {t(s.bodyKey)}
                 </Text>
               </View>
             </View>
           ))}
         </View>
-        <Button title="Got it" icon="check" onPress={onDismiss} />
+        <Button title={t('coach.gotIt')} icon="check" onPress={onDismiss} />
       </View>
     </Animated.View>
   );

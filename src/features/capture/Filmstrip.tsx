@@ -65,7 +65,13 @@ const StripCell = memo(function StripCell({
   const isPending = !shot?.captured && Boolean(pendingUri);
 
   return (
-    <PressableScale style={[styles.cell, active && styles.cellActive]} onPress={onPress} haptic="selection">
+    <PressableScale
+      style={[styles.cell, active && styles.cellActive]}
+      onPress={onPress}
+      haptic="selection"
+      accessibilityRole="button"
+      accessibilityLabel={`${slot.label}, ${shot?.captured ? 'captured' : isPending ? 'uploading' : 'empty'}`}
+    >
       {displayUri ? (
         <Image
           source={{ uri: displayUri }}
@@ -111,7 +117,7 @@ const styles = StyleSheet.create({
   badge: {
     position: 'absolute',
     top: 2,
-    right: 2,
+    end: 2,
     width: 16,
     height: 16,
     borderRadius: 8,

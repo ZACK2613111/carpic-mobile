@@ -67,3 +67,14 @@ export async function uploadShotAsset(
 export function shotSignedUrl(path: string | null): Promise<string | null> {
   return signedUrlFor(BUCKET, path);
 }
+
+/**
+ * Upload a hotspot's close-up detail photo to the private projects bucket.
+ * `key` scopes it per hotspot (e.g. `${slot}-${hotspotId}` for a shot, or
+ * `spin-${hotspotId}` for the 360). Returns the object path.
+ */
+export async function uploadHotspotPhoto(projectId: string, key: string, localUri: string): Promise<string> {
+  const uid = await currentUserId();
+  const path = `${uid}/${projectId}/hotspots/${key}.jpg`;
+  return uploadFile(BUCKET, path, localUri, 'image/jpeg');
+}

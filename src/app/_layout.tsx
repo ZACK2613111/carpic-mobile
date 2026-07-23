@@ -11,6 +11,7 @@ import { loadBrand } from '@/features/branding/brand';
 import { loadCapturePrefs } from '@/features/capture/capturePrefs';
 import { initUploads } from '@/features/uploads/uploads';
 import { fontAssets } from '@/lib/fonts';
+import { initI18n } from '@/lib/i18n';
 import { asyncStoragePersister, dehydrateOptions, queryClient } from '@/lib/queryClient';
 import { AuthProvider } from '@/providers/AuthProvider';
 import { colors } from '@/theme';
@@ -24,6 +25,7 @@ export default function RootLayout() {
 
   // Restore the persisted upload outbox and start draining (offline-first).
   useEffect(() => {
+    void initI18n();
     initUploads();
     void loadBrand();
     void loadCapturePrefs();

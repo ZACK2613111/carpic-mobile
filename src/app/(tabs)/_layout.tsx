@@ -4,11 +4,13 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { Icon } from '@/components/Icon';
 import { isSupabaseConfigured } from '@/lib/env';
 import { fontFamily } from '@/lib/fonts';
+import { useT } from '@/lib/i18n';
 import { useAuth } from '@/providers/AuthProvider';
 import { colors } from '@/theme';
 
 export default function TabsLayout() {
   const { session, loading } = useAuth();
+  const t = useT();
 
   if (isSupabaseConfigured && loading) {
     return (
@@ -37,11 +39,11 @@ export default function TabsLayout() {
     >
       <Tabs.Screen
         name="index"
-        options={{ title: 'Projects', tabBarIcon: ({ color }) => <Icon name="image" size={22} color={color} /> }}
+        options={{ title: t('tabs.projects'), tabBarIcon: ({ color }) => <Icon name="image" size={22} color={color} /> }}
       />
       <Tabs.Screen
         name="settings"
-        options={{ title: 'Settings', tabBarIcon: ({ color }) => <Icon name="sliders" size={22} color={color} /> }}
+        options={{ title: t('tabs.settings'), tabBarIcon: ({ color }) => <Icon name="sliders" size={22} color={color} /> }}
       />
     </Tabs>
   );

@@ -5,8 +5,10 @@ import Svg, { Defs, Pattern, Rect } from 'react-native-svg';
 // SVG <Pattern> node — far cheaper than tiling hundreds of Views — and it is never
 // part of the exported PNG (the Skia canvas itself stays transparent).
 const T = 20;
-const LIGHT = '#C9C9D1';
-const DARK = '#9A9AA5';
+// Light-theme transparency checker: near-white squares on white, so "transparent"
+// reads as a soft grid — not the heavy mid-grey left over from the dark theme.
+const LIGHT = '#FFFFFF';
+const DARK = '#E6E9F0';
 
 export function Checkerboard({ width, height }: { width: number; height: number }) {
   return (

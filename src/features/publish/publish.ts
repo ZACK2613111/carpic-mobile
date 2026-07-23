@@ -4,9 +4,10 @@ import { getBrand, watermarkVisible } from '@/features/branding/brand';
 import { getSlot } from '@/features/capture/shotTemplate';
 import { decodeVin, vinSummary } from '@/features/vehicle/vin';
 import { updateProject } from '@/features/projects/projects.api';
-import type { Project } from '@/features/projects/types';
+import type { Hotspot, Project } from '@/features/projects/types';
 import type { Shot } from '@/features/shots/types';
 import { spinFramePath } from '@/features/spin/spin.api';
+import { t } from '@/lib/i18n';
 import { currentUserId, publicUrlFor, signedUrlFor, uploadFile } from '@/lib/storage';
 
 // Assets stay in the PRIVATE bucket; the public manifest embeds long-lived signed
@@ -15,6 +16,18 @@ import { currentUserId, publicUrlFor, signedUrlFor, uploadFile } from '@/lib/sto
 const YEAR = 31_536_000;
 
 export type PublishStep = (label: string) => void;
+
+// Sign each hotspot's optional close-up photo into a long-lived URL for the
+// public manifest (the raw storage path is private). Preserves every other
+// field, including `frame` on spin hotspots.
+async function signHotspotPhotos<T extends Hotspot>(hotspots: T[] | undefined): Promise<(T & { photoUrl?: string })[]> {
+  return Promise.all(
+    (hotspots ?? []).map(async (h) => ({
+      ...h,
+      photoUrl: h.photoPath ? ((await signedUrlFor('projects', h.photoPath, YEAR)) ?? undefined) : undefined,
+    }))
+  );
+}
 
 /**
  * The viewer web app is uploaded ONCE by the developer to the read-only public
@@ -37,7 +50,7 @@ export async function publishProject(project: Project, shots: Shot[], onStep?: P
   const uid = await currentUserId();
   const viewerUrl = await viewerAppUrl();
 
-  onStep?.('Preparing photos');
+  onStep?.(t('publish.preparingPhotos'));
   const captured = shots.filter((s) => s.captured && s.image_path);
   // Sign every shot's URL(s) in parallel rather than one round-trip at a time;
   // then drop any shot whose main image URL failed, preserving order.
@@ -57,7 +70,10 @@ export async function publishProject(project: Project, shots: Shot[], onStep?: P
         url,
         cutout: useCutout,
         backgroundId: s.background_id,
-        hotspots: s.doc?.hotspots ?? [],
+        // Alpha footprint of the cutout → lets the viewer place the shadow +
+        // reflection under the real car. Only meaningful when showing a cutout.
+        bounds: useCutout ? (s.doc?.bounds ?? null) : null,
+        hotspots: await signHotspotPhotos(s.doc?.hotspots),
         shadow: s.doc?.shadow ?? null,
         plate: s.doc?.plate ?? null,
         audioUrl,
@@ -68,12 +84,12 @@ export async function publishProject(project: Project, shots: Shot[], onStep?: P
   if (manifestShots.length < captured.length) {
     // Publishing with silently dropped photos ships a broken gallery to the
     // buyer — fail loudly instead; publish is retryable.
-    throw new Error('Some photos could not be prepared — check your connection and publish again.');
+    throw new Error(t('publish.photosFailed'));
   }
 
   let spin: unknown = null;
   if (project.spin && project.spin.frameCount > 0) {
-    onStep?.('Preparing 360°');
+    onStep?.(t('publish.preparing360'));
     const hasCutout = Boolean(project.spin.hasCutout);
     const frames = await Promise.all(
       Array.from({ length: project.spin.frameCount }, (_, i) =>
@@ -81,19 +97,19 @@ export async function publishProject(project: Project, shots: Shot[], onStep?: P
       )
     );
     if (frames.some((f) => !f)) {
-      throw new Error('Some 360° frames could not be prepared — check your connection and publish again.');
+      throw new Error(t('publish.framesFailed'));
     }
     spin = {
       frameCount: project.spin.frameCount,
       hasCutout,
       backgroundId: project.spin.backgroundId ?? 'transparent',
       frames,
-      hotspots: project.spin.hotspots ?? [],
+      hotspots: await signHotspotPhotos(project.spin.hotspots),
       shadow: project.spin.shadow ?? null,
     };
   }
 
-  onStep?.('Publishing');
+  onStep?.(t('publish.publishing'));
   const brand = getBrand();
   const watermark = watermarkVisible(brand) ? { text: brand.text.trim(), position: brand.position } : null;
   const vehicle = project.vin ? vinSummary(decodeVin(project.vin)) || null : null;

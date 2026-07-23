@@ -6,8 +6,9 @@
     <title>Photos du véhicule — CarStudio</title>
     <style>
       :root {
-        --bg: #0a0a0f; --surface: #15151f; --surface-alt: #1c1c28; --border: #2e2e3c;
-        --text: #f6f7fb; --muted: #a2a3b2; --primary: #4b7bff; --ok: #3ecf8e; --err: #ff5a5a;
+        /* Light "White & Light" brand — mirrors the app's theme.ts */
+        --bg: #ffffff; --surface: #f6f7f9; --surface-alt: #eef0f4; --border: #e4e7ee;
+        --text: #14151a; --muted: #5b6070; --primary: #3e63dd; --ok: #12a150; --err: #e5484d;
       }
       * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
       html, body { margin: 0; background: var(--bg); color: var(--text);
@@ -21,7 +22,8 @@
       .err b { color: var(--err); }
 
       .progressCard { background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
-        padding: 14px; margin-bottom: 18px; position: sticky; top: 8px; z-index: 5; }
+        padding: 14px; margin-bottom: 18px; position: sticky; top: 8px; z-index: 5;
+        box-shadow: 0 2px 8px rgba(26,35,64,.06); }
       .progressTop { display: flex; justify-content: space-between; font-size: 14px; font-weight: 700; margin-bottom: 8px; }
       .progressTop span:last-child { color: var(--muted); font-weight: 600; }
       .track { height: 8px; border-radius: 999px; background: var(--surface-alt); overflow: hidden; }
@@ -45,11 +47,11 @@
       .slot button.redo { background: var(--surface-alt); color: var(--text); border: 1px solid var(--border); }
       .slot button:disabled { opacity: .55; }
       .slot input[type="file"] { display: none; }
-      .doneBanner { text-align: center; background: rgba(62,207,142,.12); border: 1px solid var(--ok);
+      .doneBanner { text-align: center; background: rgba(18,161,80,.10); border: 1px solid var(--ok);
         color: var(--ok); font-weight: 700; border-radius: 14px; padding: 14px; margin-top: 18px; }
       .footer { text-align: center; color: var(--muted); font-size: 11px; padding-top: 28px; }
-      .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.35);
-        border-top-color: #fff; border-radius: 50%; animation: r 1s linear infinite; vertical-align: -2px; }
+      .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(62,99,221,.28);
+        border-top-color: var(--primary); border-radius: 50%; animation: r 1s linear infinite; vertical-align: -2px; }
       @keyframes r { to { transform: rotate(360deg); } }
       @media (prefers-reduced-motion: reduce) { .spin { animation-duration: 2.5s; } .fill { transition: none; } }
     </style>
@@ -63,7 +65,6 @@
       var FNS = qs.get('e'); // Edge Functions base URL, provided by the app link
       var GROUPS = { exterior: 'Extérieur', wheels: 'Pneus', interior: 'Intérieur', docs: 'Documents', engine: 'Moteur' };
       var GROUP_ORDER = ['exterior', 'wheels', 'interior', 'docs', 'engine'];
-      var ICONS = { exterior: '🚗', wheels: '🛞', interior: '💺', docs: '📄', engine: '🔧' };
       // Same data rule as the app: photos are resized before upload.
       var MAX_DIM = 2000;
       var JPEG_Q = 0.85;
@@ -151,7 +152,7 @@
             var im = document.createElement('img');
             im.src = URL.createObjectURL(file);
             thumb.appendChild(im);
-            setState(row, 'ok', 'Envoyée ✓');
+            setState(row, 'ok', 'Envoyée');
             btn.textContent = 'Reprendre';
             btn.className = 'redo';
             btn.disabled = false;
@@ -165,11 +166,11 @@
 
       function slotRow(slot) {
         var row = el('div', 'slot');
-        var thumb = el('div', 'thumb', ICONS[slot.section] || '📷');
+        var thumb = el('div', 'thumb');
         row.appendChild(thumb);
         var meta = el('div', 'meta');
         meta.appendChild(el('div', 'label', slot.labelFr || slot.label));
-        meta.appendChild(el('div', 'state' + (slot.done ? ' ok' : ''), slot.done ? 'Déjà envoyée ✓' : 'À prendre'));
+        meta.appendChild(el('div', 'state' + (slot.done ? ' ok' : ''), slot.done ? 'Déjà envoyée' : 'À prendre'));
         row.appendChild(meta);
 
         var input = document.createElement('input');

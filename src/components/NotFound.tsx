@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { Text } from '@/components/Text';
+import { useT } from '@/lib/i18n';
 import { colors, spacing } from '@/theme';
 
 /**
@@ -12,25 +13,26 @@ import { colors, spacing } from '@/theme';
  * the cause is a transient load error rather than a genuinely absent item.
  */
 export function NotFound({
-  title = 'Not found',
-  subtitle = "This item doesn't exist anymore.",
+  title,
+  subtitle,
   onRetry,
 }: {
   title?: string;
   subtitle?: string;
   onRetry?: () => void;
 }) {
+  const t = useT();
   return (
     <SafeAreaView style={styles.wrap}>
       <Text variant="heading" center>
-        {title}
+        {title ?? t('notFound.itemTitle')}
       </Text>
       <Text variant="body" muted center>
-        {subtitle}
+        {subtitle ?? t('notFound.itemBody')}
       </Text>
-      {onRetry ? <Button title="Try again" icon="refresh" onPress={onRetry} /> : null}
+      {onRetry ? <Button title={t('common.retry')} icon="refresh" onPress={onRetry} /> : null}
       <Button
-        title="Go back"
+        title={t('common.back')}
         variant={onRetry ? 'ghost' : 'primary'}
         onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
       />

@@ -15,6 +15,7 @@ import { IconButton } from '@/components/IconButton';
 import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
 import { haptics } from '@/lib/haptics';
+import { useT } from '@/lib/i18n';
 import { colors, radius, spacing } from '@/theme';
 
 type Props = {
@@ -23,6 +24,7 @@ type Props = {
 };
 
 export function EngineAudio({ audioUrl, onRecorded }: Props) {
+  const t = useT();
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recState = useAudioRecorderState(recorder);
   const player = useAudioPlayer(audioUrl ?? undefined);
@@ -41,7 +43,7 @@ export function EngineAudio({ audioUrl, onRecorded }: Props) {
     try {
       const perm = await requestRecordingPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert('Microphone needed', 'Allow the microphone to record the engine sound.');
+        Alert.alert(t('audio.micNeededTitle'), t('audio.micNeededBody'));
         return;
       }
       await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
@@ -49,7 +51,7 @@ export function EngineAudio({ audioUrl, onRecorded }: Props) {
       recorder.record();
       haptics.medium();
     } catch (e) {
-      Alert.alert('Recording failed', e instanceof Error ? e.message : 'Please try again.');
+      Alert.alert(t('audio.recordingFailed'), e instanceof Error ? e.message : t('common.tryAgain'));
     }
   };
 
@@ -61,7 +63,7 @@ export function EngineAudio({ audioUrl, onRecorded }: Props) {
       haptics.success();
       if (recorder.uri) await onRecorded(recorder.uri);
     } catch (e) {
-      Alert.alert('Could not save', e instanceof Error ? e.message : 'Please try again.');
+      Alert.alert(t('audio.saveFailed'), e instanceof Error ? e.message : t('common.tryAgain'));
     } finally {
       setBusy(false);
     }
@@ -80,7 +82,7 @@ export function EngineAudio({ audioUrl, onRecorded }: Props) {
     try {
       player.play();
     } catch {
-      Alert.alert('Playback failed', 'Could not play this recording.');
+      Alert.alert(t('audio.playbackFailed'), t('audio.playbackFailedBody'));
     }
   };
 
@@ -90,13 +92,13 @@ export function EngineAudio({ audioUrl, onRecorded }: Props) {
         <PressableScale style={[styles.recBtn, styles.recording]} onPress={stop} disabled={busy}>
           <View style={styles.stopSquare} />
           <Text variant="bodyStrong" color="#FFFFFF">
-            Stop · {Math.round(recState.durationMillis / 1000)}s
+            {t('audio.stop', { s: Math.round(recState.durationMillis / 1000) })}
           </Text>
         </PressableScale>
       ) : (
         <PressableScale style={styles.recBtn} onPress={start} haptic="medium">
           <Icon name="mic" size={18} color={colors.danger} />
-          <Text variant="bodyStrong">{audioUrl ? 'Re-record engine' : 'Record engine sound'}</Text>
+          <Text variant="bodyStrong">{audioUrl ? t('audio.reRecord') : t('audio.record')}</Text>
         </PressableScale>
       )}
 
@@ -104,7 +106,7 @@ export function EngineAudio({ audioUrl, onRecorded }: Props) {
         <IconButton
           name={playerStatus.playing ? 'pause' : 'play'}
           variant="surface"
-          accessibilityLabel={playerStatus.playing ? 'Pause' : 'Play engine sound'}
+          accessibilityLabel={playerStatus.playing ? t('audio.pause') : t('audio.play')}
           onPress={togglePlay}
         />
       ) : null}

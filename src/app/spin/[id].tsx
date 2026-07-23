@@ -19,6 +19,7 @@ import { BackgroundStrip } from '@/features/editor/BackgroundStrip';
 import { shadowEnabled } from '@/features/editor/groundShadow';
 import { HotspotSheet } from '@/features/editor/HotspotSheet';
 import { createHotspot } from '@/features/editor/hotspots';
+import { pickAndUploadHotspotPhoto } from '@/features/editor/hotspotPhoto';
 import type { EditorMode, SpinHotspot } from '@/features/projects/types';
 import { useProject } from '@/features/projects/useProjects';
 import { getSpinFrameUrls, saveSpin, uploadSpinFrame } from '@/features/spin/spin.api';
@@ -28,6 +29,7 @@ import { usePendingUploads } from '@/features/uploads/usePendingUploads';
 import type { SpinFrameUploadPayload } from '@/features/uploads/uploads';
 import { mapWithConcurrency } from '@/lib/concurrency';
 import { haptics } from '@/lib/haptics';
+import { useT } from '@/lib/i18n';
 import { uploadFileUri, type UploadTask } from '@/lib/uploadQueue';
 import { useDebouncedAutosave } from '@/lib/useDebouncedAutosave';
 import { useRouteId } from '@/lib/useRouteId';
@@ -37,6 +39,7 @@ export default function SpinScreen() {
   const id = useRouteId() ?? '';
   const router = useRouter();
   const toast = useToast();
+  const t = useT();
   const qc = useQueryClient();
   const { data: project, isError: projectError, refetch: refetchProject } = useProject(id || undefined);
 
@@ -121,11 +124,11 @@ export default function SpinScreen() {
   useEffect(() => {
     if (saveStatus === 'failed' && !failureToasted.current) {
       failureToasted.current = true;
-      toast.show('Could not save 360° changes — retrying in background', 'error');
+      toast.show(t('spin.saveFailed'), 'error');
     } else if (saveStatus === 'saved') {
       failureToasted.current = false;
     }
-  }, [saveStatus, toast]);
+  }, [saveStatus, toast, t]);
 
   const selected = selectedId ? hotspots.find((h) => h.id === selectedId) ?? null : null;
   const spinShadowOn = shadowEnabled(getBackground(backgroundId), shadow);
@@ -185,24 +188,24 @@ export default function SpinScreen() {
         setBackgroundId((b) => (b === 'transparent' ? 'studio-graphite' : b));
         invalidateSpinFrames(qc, id);
         haptics.success();
-        toast.show('360° background removed', 'success');
+        toast.show(t('spin.bgRemoved'), 'success');
       } else if (ok > 0) {
-        toast.show(`Cut out incomplete (${ok}/${frameCount} frames) — tap again to retry`, 'error');
+        toast.show(t('spin.cutIncomplete', { ok, total: frameCount }), 'error');
       } else {
-        toast.show('Could not cut out the 360', 'error');
+        toast.show(t('spin.cutFailed'), 'error');
       }
     } catch (e) {
-      toast.show(e instanceof Error ? e.message : 'Cut out failed', 'error');
+      toast.show(e instanceof Error ? e.message : t('editor.cutoutFailedTitle'), 'error');
     } finally {
       setCutProgress(null);
     }
-  }, [frameCount, pendingCount, id, qc, toast]);
+  }, [frameCount, pendingCount, id, qc, toast, t]);
 
   if (!id || projectError) {
     return (
       <NotFound
-        title="360° unavailable"
-        subtitle={projectError ? "This project couldn't be loaded." : 'This project no longer exists.'}
+        title={t('spin.unavailable')}
+        subtitle={projectError ? t('project.loadFailed') : t('project.gone')}
         onRetry={projectError ? () => void refetchProject() : undefined}
       />
     );
@@ -211,9 +214,9 @@ export default function SpinScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <IconButton name="back" variant="ghost" accessibilityLabel="Back" onPress={() => router.back()} />
+        <IconButton name="back" variant="ghost" accessibilityLabel={t('common.back')} onPress={() => router.back()} />
         <Text variant="heading" style={styles.title}>
-          360° spin
+          {t('project.spin360')}
         </Text>
         <View style={{ width: 44 }} />
       </View>
@@ -222,9 +225,9 @@ export default function SpinScreen() {
         <View style={styles.empty}>
           <EmptyState
             icon="refresh"
-            title="No 360° yet"
-            subtitle="Walk around the car and capture ~24 frames."
-            actionLabel="Capture 360°"
+            title={t('spin.emptyTitle')}
+            subtitle={t('spin.emptySubtitle')}
+            actionLabel={t('spin.captureAction')}
             onAction={() => router.replace({ pathname: '/capture/spin/[id]', params: { id } })}
           />
         </View>
@@ -235,8 +238,8 @@ export default function SpinScreen() {
               value={mode}
               onChange={setMode}
               options={[
-                { value: 'marketing', label: 'Marketing', icon: 'sparkles' },
-                { value: 'inspection', label: 'Inspection', icon: 'wrench' },
+                { value: 'marketing', label: t('hotspot.marketing'), icon: 'sparkles' },
+                { value: 'inspection', label: t('hotspot.inspection'), icon: 'wrench' },
               ]}
             />
           </View>
@@ -270,7 +273,7 @@ export default function SpinScreen() {
                   >
                     <Icon name="sparkles" size={16} color={spinShadowOn ? colors.primary : colors.textMuted} />
                     <Text variant="label" color={spinShadowOn ? colors.primary : colors.textMuted}>
-                      Shadow {spinShadowOn ? 'on' : 'off'}
+                      {`${t('editor.shadow')} ${spinShadowOn ? t('common.on') : t('common.off')}`}
                     </Text>
                   </PressableScale>
                 </View>
@@ -282,8 +285,8 @@ export default function SpinScreen() {
               <Button
                 title={
                   pendingCount > 0
-                    ? `Uploading ${pendingCount} frame${pendingCount === 1 ? '' : 's'}…`
-                    : 'Cut out 360°'
+                    ? t(pendingCount === 1 ? 'spin.uploadingFramesOne' : 'spin.uploadingFramesMany', { n: pendingCount })
+                    : t('spin.cutOut360')
                 }
                 icon="scissors"
                 onPress={cutout360}
@@ -300,6 +303,7 @@ export default function SpinScreen() {
         onChange={(patch) =>
           selected && setHotspots((hs) => hs.map((h) => (h.id === selected.id ? { ...h, ...patch } : h)))
         }
+        onPickPhoto={selected ? () => pickAndUploadHotspotPhoto(id, `spin-${selected.id}`) : undefined}
         onDelete={() => {
           if (selected) {
             haptics.medium();
@@ -313,9 +317,9 @@ export default function SpinScreen() {
       {cutProgress ? (
         <View style={styles.progress}>
           <ActivityIndicator color={colors.primary} size="large" />
-          <Text variant="bodyStrong">Removing 360° backgrounds…</Text>
+          <Text variant="bodyStrong">{t('spin.removingBg')}</Text>
           <Text variant="caption" muted>
-            {cutProgress.done} / {cutProgress.total} frames · on your device
+            {t('spin.framesOnDevice', { done: cutProgress.done, total: cutProgress.total })}
           </Text>
         </View>
       ) : null}
@@ -325,7 +329,14 @@ export default function SpinScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.hairline,
+  },
   title: { flex: 1, textAlign: 'center' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   modeRow: { paddingHorizontal: spacing.lg, paddingBottom: spacing.sm },

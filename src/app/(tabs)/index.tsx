@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { Alert, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { Alert, FlatList, Platform, RefreshControl, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Chip } from '@/components/Chip';
@@ -18,6 +18,7 @@ import { filterAndSortProjects, isPublished, type SortMode } from '@/features/pr
 import type { Project } from '@/features/projects/types';
 import { projectKeys, useDeleteProject, useProjects, useSignedUrl } from '@/features/projects/useProjects';
 import { haptics } from '@/lib/haptics';
+import { useT } from '@/lib/i18n';
 import { relativeTime } from '@/lib/relativeTime';
 import { colors, radius, shadow, spacing } from '@/theme';
 
@@ -26,6 +27,7 @@ export default function ProjectsScreen() {
   const qc = useQueryClient();
   const { data: projects, isLoading, isError, error, refetch, isRefetching } = useProjects();
   const del = useDeleteProject();
+  const t = useT();
 
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortMode>('recent');
@@ -43,28 +45,28 @@ export default function ProjectsScreen() {
   const confirmDelete = useCallback(
     (project: Project) => {
       haptics.warning();
-      Alert.alert('Delete project', `Delete "${project.name}"? This cannot be undone.`, [
-        { text: 'Cancel', style: 'cancel' },
+      Alert.alert(t('home.deleteTitle'), t('home.deleteConfirm', { name: project.name }), [
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('hotspot.delete'),
           style: 'destructive',
           onPress: () =>
             del.mutate(project.id, {
-              onError: () => Alert.alert('Delete failed', 'Could not delete the project — please try again.'),
+              onError: () => Alert.alert(t('home.deleteFailed'), t('home.deleteFailedBody')),
             }),
         },
       ]);
     },
-    [del]
+    [del, t]
   );
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
         <View>
-          <Text variant="display">Projects</Text>
+          <Text variant="display">{t('tabs.projects')}</Text>
           <Text variant="body" muted>
-            {projects?.length ? `${projects.length} in your studio` : 'Your car photo studio'}
+            {projects?.length ? t('home.countInStudio', { n: projects.length }) : t('home.tagline')}
           </Text>
         </View>
       </View>
@@ -75,8 +77,8 @@ export default function ProjectsScreen() {
         <View style={styles.center}>
           <EmptyState
             icon="refresh"
-            title="Couldn't load projects"
-            subtitle={error instanceof Error ? error.message : 'Pull to retry.'}
+            title={t('home.loadFailedTitle')}
+            subtitle={error instanceof Error ? error.message : t('home.pullToRetry')}
           />
         </View>
       ) : (
@@ -88,6 +90,11 @@ export default function ProjectsScreen() {
           columnWrapperStyle={styles.row}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          removeClippedSubviews={Platform.OS === 'android'}
+          initialNumToRender={6}
+          maxToRenderPerBatch={6}
+          windowSize={5}
+          updateCellsBatchingPeriod={50}
           refreshControl={
             <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
           }
@@ -99,7 +106,7 @@ export default function ProjectsScreen() {
                     leftIcon="crosshair"
                     value={query}
                     onChangeText={setQuery}
-                    placeholder="Search name, VIN or make…"
+                    placeholder={t('home.searchPlaceholder')}
                     autoCapitalize="none"
                     autoCorrect={false}
                     returnKeyType="search"
@@ -112,7 +119,7 @@ export default function ProjectsScreen() {
                 >
                   <Icon name="sliders" size={16} color={colors.textMuted} />
                   <Text variant="label" muted>
-                    {sort === 'recent' ? 'Recent' : 'Name'}
+                    {sort === 'recent' ? t('home.sortRecent') : t('home.sortName')}
                   </Text>
                 </PressableScale>
               </View>
@@ -121,13 +128,13 @@ export default function ProjectsScreen() {
           ListEmptyComponent={
             <View style={styles.center}>
               {query ? (
-                <EmptyState icon="crosshair" title="No matches" subtitle={`Nothing matches “${query}”.`} />
+                <EmptyState icon="crosshair" title={t('home.noMatchesTitle')} subtitle={t('home.noMatchesSubtitle', { query })} />
               ) : (
                 <EmptyState
                   icon="image"
-                  title="No projects yet"
-                  subtitle="Turn a car photo into a studio-quality shot in seconds."
-                  actionLabel="New project"
+                  title={t('home.emptyTitle')}
+                  subtitle={t('home.emptySubtitle')}
+                  actionLabel={t('home.newProject')}
                   onAction={() => router.push('/new')}
                 />
               )}
@@ -144,7 +151,13 @@ export default function ProjectsScreen() {
         />
       )}
 
-      <PressableScale style={[styles.fab, shadow.md]} onPress={() => router.push('/new')} haptic="medium">
+      <PressableScale
+        style={[styles.fab, shadow.md]}
+        onPress={() => router.push('/new')}
+        haptic="medium"
+        accessibilityRole="button"
+        accessibilityLabel={t('home.newProject')}
+      >
         <Icon name="plus" size={24} color="#FFFFFF" />
       </PressableScale>
     </SafeAreaView>
@@ -164,9 +177,18 @@ function ProjectCard({
 }) {
   const { data: thumbUrl } = useSignedUrl(project.thumb_path);
   const updated = relativeTime(project.updated_at);
+  const t = useT();
 
   return (
-    <PressableScale style={styles.card} onPress={onPress} onPressIn={onPressIn} onLongPress={onLongPress}>
+    <PressableScale
+      style={styles.card}
+      onPress={onPress}
+      onPressIn={onPressIn}
+      onLongPress={onLongPress}
+      accessibilityRole="button"
+      accessibilityLabel={isPublished(project) ? t('home.cardLabelPublished', { name: project.name }) : project.name}
+      accessibilityHint={t('home.cardHint')}
+    >
       <View style={styles.thumb}>
         {thumbUrl ? (
           <>
@@ -194,7 +216,7 @@ function ProjectCard({
         )}
         {isPublished(project) ? (
           <View style={styles.chip}>
-            <Chip label="Published" color={colors.success} />
+            <Chip label={t('home.published')} color={colors.success} />
           </View>
         ) : null}
       </View>
@@ -264,7 +286,7 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    right: spacing.lg,
+    end: spacing.lg,
     bottom: spacing.xl,
     width: 56,
     height: 56,

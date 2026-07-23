@@ -4,10 +4,11 @@ import Animated, { useAnimatedStyle, type SharedValue } from 'react-native-reani
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
 import { Text } from '@/components/Text';
+import { useLocale, useT } from '@/lib/i18n';
 import { colors, radius, spacing } from '@/theme';
 import type { LevelStatus } from './level';
 import { getSilhouette, type GuideShape } from './silhouettes';
-import type { GuideId } from './shotTemplate';
+import { localizedLabel, type GuideId } from './shotTemplate';
 
 // Where to stand relative to the car (drawn front-up) for each exterior angle.
 const EXTERIOR_DOT: Partial<Record<GuideId, { x: number; y: number }>> = {
@@ -34,6 +35,7 @@ type Props = {
 };
 
 export function GuideOverlay({ guide, label, grid, showLevel, levelStatus = 'off', roll }: Props) {
+  const locale = useLocale();
   const dot = EXTERIOR_DOT[guide];
   const sil = getSilhouette(guide);
 
@@ -55,7 +57,7 @@ export function GuideOverlay({ guide, label, grid, showLevel, levelStatus = 'off
           {label}
         </Text>
         <Text variant="caption" color="rgba(255,255,255,0.85)" center>
-          {sil.label} · {sil.labelFr}
+          {localizedLabel(sil, locale)}
         </Text>
       </View>
 
@@ -152,18 +154,20 @@ function HorizonLine({ roll, status }: { roll: SharedValue<number>; status: Leve
 }
 
 function LevelPill({ status }: { status: LevelStatus }) {
+  const t = useT();
   if (status === 'off') return null;
   const level = status === 'level';
   return (
     <View style={[styles.levelPill, { backgroundColor: level ? 'rgba(52,211,153,0.16)' : colors.scrim, borderColor: level ? LEVEL_GREEN : 'transparent' }]}>
       <Text variant="caption" color={level ? LEVEL_GREEN : '#FFFFFF'}>
-        {level ? 'Level · À niveau' : 'Tilt to level · Redresse'}
+        {level ? t('guide.level') : t('guide.tilt')}
       </Text>
     </View>
   );
 }
 
 function PositionMap({ dot }: { dot: { x: number; y: number } }) {
+  const t = useT();
   const S = 96;
   const pad = 16;
   const carW = 30;
@@ -199,7 +203,7 @@ function PositionMap({ dot }: { dot: { x: number; y: number } }) {
         />
       </Svg>
       <Text variant="caption" color="#FFFFFF" center>
-        Stand here
+        {t('guide.standHere')}
       </Text>
     </View>
   );

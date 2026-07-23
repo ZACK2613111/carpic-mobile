@@ -15,6 +15,8 @@ type AuthContextValue = {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName?: string) => Promise<SignUpResult>;
+  resetPassword: (email: string) => Promise<void>;
+  deleteAccount: () => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -83,6 +85,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // the user is already signed in. When it's ON, there's no session yet and
         // they must confirm their email first.
         return { session: data.session, needsConfirmation: !data.session };
+      },
+      async resetPassword(email) {
+        // Sends a recovery email. Completing it in-app (a set-new-password screen
+        // via a PASSWORD_RECOVERY deep link) needs Supabase redirect config —
+        // Phase 2; the emailed link already lets the user reset.
+        const { error } = await supabase.auth.resetPasswordForEmail(email);
+        if (error) throw error;
+      },
+      async deleteAccount() {
+        // The Edge Function purges storage + deletes the auth user (cascading
+        // every DB row). functions.invoke attaches the caller's access token.
+        const { error } = await supabase.functions.invoke('delete-account');
+        if (error) throw error;
+        // The server user is gone — clear the local session + cache like an
+        // explicit sign-out so no stale data lingers.
+        explicitSignOut.current = true;
+        try {
+          await supabase.auth.signOut();
+        } finally {
+          explicitSignOut.current = false;
+        }
       },
       async signOut() {
         explicitSignOut.current = true;

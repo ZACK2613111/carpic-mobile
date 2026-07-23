@@ -1,6 +1,7 @@
-import { getProject, updateProject } from '@/features/projects/projects.api';
-import { EMPTY_SPIN, type SpinData } from '@/features/projects/types';
+import { updateProject } from '@/features/projects/projects.api';
+import type { SpinData } from '@/features/projects/types';
 import { currentUserId, signedUrlFor, uploadFile } from '@/lib/storage';
+import { supabase } from '@/lib/supabase';
 
 const BUCKET = 'projects';
 
@@ -32,12 +33,17 @@ export async function saveSpin(projectId: string, spin: SpinData): Promise<void>
  * spin fields. Called by the upload queue as frames sync after an offline
  * capture — when the immediate saveSpin at finish time couldn't reach the DB,
  * the count converges to the truth as uploads land (FIFO, so in order).
+ *
+ * Done as an atomic server-side jsonb_set (raise_spin_frame_count, schema_v6)
+ * rather than a read-modify-write: a draining frame upload must never clobber
+ * the spin editor's concurrently-saved hotspots/background with a stale read.
  */
 export async function ensureSpinFrameCount(projectId: string, minCount: number): Promise<void> {
-  const project = await getProject(projectId);
-  const spin = project.spin ?? EMPTY_SPIN;
-  if (spin.frameCount >= minCount) return;
-  await saveSpin(projectId, { ...spin, frameCount: minCount });
+  const { error } = await supabase.rpc('raise_spin_frame_count', {
+    p_project_id: projectId,
+    p_min: minCount,
+  });
+  if (error) throw error;
 }
 
 /** Signed URLs for each spin frame (original or cutout), in order. */

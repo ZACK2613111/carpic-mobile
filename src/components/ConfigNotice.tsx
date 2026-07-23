@@ -8,7 +8,7 @@ export function ConfigNotice() {
   return (
     <View style={styles.box}>
       <Text variant="label" color={colors.warning}>
-        ⚠  SUPABASE NOT CONFIGURED
+        SUPABASE NOT CONFIGURED
       </Text>
       <Text variant="caption" muted>
         Copy .env.example to .env, add your Supabase URL + publishable key, then rebuild the dev client. See the

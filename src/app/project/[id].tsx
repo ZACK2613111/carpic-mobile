@@ -11,27 +11,32 @@ import { Icon } from '@/components/Icon';
 import { IconButton } from '@/components/IconButton';
 import { NotFound } from '@/components/NotFound';
 import { PressableScale } from '@/components/PressableScale';
+import { Skeleton } from '@/components/Skeleton';
 import { Text } from '@/components/Text';
 import { TextField } from '@/components/TextField';
 import { useToast } from '@/components/Toast';
 import { captureLinkUrl, getOrCreateCaptureLink } from '@/features/capture-links/captureLinks.api';
-import { getSlot, GROUP_LABELS, GROUP_ORDER, SHOT_TEMPLATE, type ShotSlot } from '@/features/capture/shotTemplate';
-import { SEVERITY_LABEL, summarizeInspection, type HotspotGroup } from '@/features/inspection/report';
+import { getSlot, GROUP_LABELS, GROUP_ORDER, localizedLabel, SHOT_TEMPLATE, type ShotSlot } from '@/features/capture/shotTemplate';
+import { summarizeInspection, type HotspotGroup } from '@/features/inspection/report';
 import { publishProject } from '@/features/publish/publish';
 import type { Shot } from '@/features/shots/types';
 import { shotKeys, useShots, useShotSignedUrl } from '@/features/shots/useShots';
+import { useFailedUploads } from '@/features/uploads/useFailedUploads';
 import { usePendingUploads } from '@/features/uploads/usePendingUploads';
 import type { ShotUploadPayload } from '@/features/uploads/uploads';
 import { useProject, useUpdateProject } from '@/features/projects/useProjects';
 import { decodeVin, normalizeVin, vinSummary } from '@/features/vehicle/vin';
-import { uploadFileUri, type UploadTask } from '@/lib/uploadQueue';
+import { useLocale, useT } from '@/lib/i18n';
+import { discardFailedUpload, retryFailedUploads, uploadFileUri, type UploadTask } from '@/lib/uploadQueue';
 import { useRouteId } from '@/lib/useRouteId';
-import { colors, radius, severityColor, spacing } from '@/theme';
+import { colors, radius, severityColor, shadow, spacing } from '@/theme';
 
 export default function ProjectDashboard() {
   const id = useRouteId();
   const router = useRouter();
   const toast = useToast();
+  const t = useT();
+  const locale = useLocale();
   const { data: project, isError: projectError, refetch: refetchProject } = useProject(id ?? undefined);
   const { data: shots, isLoading } = useShots(id ?? undefined);
   const qc = useQueryClient();
@@ -56,10 +61,11 @@ export default function ProjectDashboard() {
   // Photos captured but not yet synced (offline / upload in flight) — shown on
   // their tile from the local outbox file until the real row lands.
   const pendingUploads = usePendingUploads(id ?? undefined);
+  const failedUploads = useFailedUploads(id ?? undefined);
   const pendingBySlot = useMemo(() => {
     const map: Record<string, UploadTask> = {};
-    pendingUploads.forEach((t) => {
-      if (t.kind === 'shot') map[(t.payload as ShotUploadPayload).slot] = t;
+    pendingUploads.forEach((tk) => {
+      if (tk.kind === 'shot') map[(tk.payload as ShotUploadPayload).slot] = tk;
     });
     return map;
   }, [pendingUploads]);
@@ -93,28 +99,28 @@ export default function ProjectDashboard() {
       const url = captureLinkUrl(link);
       await Share.share({ message: url, url });
     } catch (e) {
-      toast.show(e instanceof Error ? e.message : 'Could not create the link', 'error');
+      toast.show(e instanceof Error ? e.message : t('project.linkFailed'), 'error');
     } finally {
       setRequesting(false);
     }
-  }, [id, requesting, toast]);
+  }, [id, requesting, toast, t]);
   const doPublish = useCallback(async () => {
     if (!project) return;
     if (capturedCount === 0) {
-      toast.show('Capture some shots first', 'info');
+      toast.show(t('project.captureFirst'), 'info');
       return;
     }
-    setPublishing('Preparing');
+    setPublishing(t('publish.preparing'));
     try {
       const link = await publishProject(project, shots ?? [], (label) => setPublishing(label));
       setPublishing(null);
       await Share.share({ message: link, url: link });
-      toast.show('Published — link ready to share', 'success');
+      toast.show(t('project.publishedToast'), 'success');
     } catch (e) {
       setPublishing(null);
-      toast.show(e instanceof Error ? e.message : 'Publish failed', 'error');
+      toast.show(e instanceof Error ? e.message : t('project.publishFailed'), 'error');
     }
-  }, [project, shots, capturedCount, toast]);
+  }, [project, shots, capturedCount, toast, t]);
 
   const openSlot = (slot: ShotSlot) => {
     const shot = bySlot[slot.id];
@@ -122,7 +128,7 @@ export default function ProjectDashboard() {
       router.push({ pathname: '/editor/[id]', params: { id: shot.id } });
     } else if (pendingBySlot[slot.id]) {
       // Captured but not synced yet — the editor needs the DB row to exist.
-      toast.show('Photo is still syncing — editing unlocks once it uploads', 'info');
+      toast.show(t('project.syncing'), 'info');
     } else {
       router.push({ pathname: '/capture/[id]', params: { id, start: slot.id } });
     }
@@ -131,8 +137,8 @@ export default function ProjectDashboard() {
   if (!id || projectError) {
     return (
       <NotFound
-        title="Project unavailable"
-        subtitle={projectError ? "This project couldn't be loaded." : 'This project no longer exists.'}
+        title={t('project.unavailableTitle')}
+        subtitle={projectError ? t('project.loadFailed') : t('project.gone')}
         onRetry={projectError ? () => void refetchProject() : undefined}
       />
     );
@@ -141,25 +147,21 @@ export default function ProjectDashboard() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
-        <IconButton name="back" variant="ghost" accessibilityLabel="Back" onPress={() => router.back()} />
+        <IconButton name="back" variant="ghost" accessibilityLabel={t('common.back')} onPress={() => router.back()} />
         <Text variant="heading" numberOfLines={1} style={styles.title}>
-          {project?.name ?? 'Project'}
+          {project?.name ?? t('project.fallbackName')}
         </Text>
         <View style={{ width: 44 }} />
       </View>
 
       {isLoading ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={colors.primary} />
-        </View>
+        <DashboardSkeleton />
       ) : (
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           {/* progress */}
           <View style={styles.progressCard}>
             <View style={styles.progressTop}>
-              <Text variant="bodyStrong">
-                {capturedCount} / {total} shots
-              </Text>
+              <Text variant="bodyStrong">{t('project.shotsCount', { done: capturedCount, total })}</Text>
               <Text variant="caption" muted>
                 {pct}%
               </Text>
@@ -171,12 +173,39 @@ export default function ProjectDashboard() {
               <View style={styles.pendingRow}>
                 <ActivityIndicator size="small" color={colors.primary} />
                 <Text variant="caption" muted>
-                  {pendingUploads.length} photo{pendingUploads.length === 1 ? '' : 's'} waiting to upload — saved
-                  locally, will sync automatically
+                  {t('project.pending', { n: pendingUploads.length })}
                 </Text>
               </View>
             ) : null}
           </View>
+
+          {/* Dead-lettered uploads (permanent failures) — no longer retried
+              silently; the seller can retry (e.g. after re-auth) or discard. */}
+          {failedUploads.length > 0 ? (
+            <View style={styles.failedCard}>
+              <Text variant="bodyStrong" color={colors.danger}>
+                {t('project.uploadsFailedTitle')}
+              </Text>
+              <Text variant="caption" muted>
+                {t('project.uploadsFailedBody', { n: failedUploads.length })}
+              </Text>
+              <View style={styles.failedActions}>
+                <Button
+                  title={t('common.retry')}
+                  icon="refresh"
+                  variant="secondary"
+                  onPress={() => retryFailedUploads()}
+                  style={styles.skFlex}
+                />
+                <Button
+                  title={t('project.dismiss')}
+                  variant="ghost"
+                  onPress={() => failedUploads.forEach((u) => discardFailedUpload(u.id))}
+                  style={styles.skFlex}
+                />
+              </View>
+            </View>
+          ) : null}
 
           {/* vehicle (VIN) */}
           <VinCard projectId={id} initialVin={project?.vin ?? ''} />
@@ -185,9 +214,9 @@ export default function ProjectDashboard() {
           {inspection.inspectionCount > 0 ? (
             <View style={styles.vinCard}>
               <View style={styles.vinHeader}>
-                <Text variant="bodyStrong">Condition</Text>
+                <Text variant="bodyStrong">{t('project.condition')}</Text>
                 <Text variant="caption" muted style={styles.conditionCount}>
-                  {inspection.inspectionCount} point{inspection.inspectionCount === 1 ? '' : 's'}
+                  {t('project.conditionPoints', { n: inspection.inspectionCount })}
                 </Text>
               </View>
               <View style={styles.vinChips}>
@@ -196,7 +225,8 @@ export default function ProjectDashboard() {
                     <View key={sev} style={styles.sevChip}>
                       <View style={[styles.sevDot, { backgroundColor: severityColor(sev) }]} />
                       <Text variant="caption">
-                        {inspection.bySeverity[sev]} {SEVERITY_LABEL[sev].toLowerCase()}
+                        {inspection.bySeverity[sev]}{' '}
+                        {t(sev === 'high' ? 'project.sevHigh' : sev === 'medium' ? 'project.sevMedium' : 'project.sevLow')}
                       </Text>
                     </View>
                   ) : null
@@ -204,7 +234,7 @@ export default function ProjectDashboard() {
               </View>
               {inspection.marketingCount > 0 ? (
                 <Text variant="caption" faint>
-                  + {inspection.marketingCount} highlight{inspection.marketingCount === 1 ? '' : 's'}
+                  {t('project.highlights', { n: inspection.marketingCount })}
                 </Text>
               ) : null}
             </View>
@@ -212,7 +242,7 @@ export default function ProjectDashboard() {
 
           {/* primary actions */}
           <Button
-            title="Guided capture"
+            title={t('project.guidedCapture')}
             icon="camera"
             size="lg"
             onPress={() => router.push({ pathname: '/capture/[id]', params: { id } })}
@@ -220,22 +250,22 @@ export default function ProjectDashboard() {
           <View style={styles.actionRow}>
             <ActionTile
               icon="refresh"
-              label="360° spin"
-              hint={project?.spin?.frameCount ? `${project.spin.frameCount} frames` : 'Capture'}
+              label={t('project.spin360')}
+              hint={project?.spin?.frameCount ? t('project.frames', { n: project.spin.frameCount }) : t('project.capture')}
               onPress={() => router.push({ pathname: '/spin/[id]', params: { id } })}
             />
             <ActionTile
               icon="share"
-              label="Publish link"
-              hint={project?.status === 'published' ? 'Re-publish' : 'Share'}
+              label={t('project.publishLink')}
+              hint={project?.status === 'published' ? t('project.rePublish') : t('project.share')}
               onPress={doPublish}
             />
           </View>
           <View style={styles.actionRow}>
             <ActionTile
               icon="camera"
-              label="Request photos"
-              hint={requesting ? 'Preparing…' : 'Owner shoots via link'}
+              label={t('project.requestPhotos')}
+              hint={requesting ? t('project.preparing') : t('project.ownerShoots')}
               onPress={doRequestPhotos}
             />
           </View>
@@ -246,7 +276,7 @@ export default function ProjectDashboard() {
             return (
               <View key={group} style={styles.group}>
                 <Text variant="label" muted>
-                  {GROUP_LABELS[group].label.toUpperCase()} · {GROUP_LABELS[group].labelFr}
+                  {localizedLabel(GROUP_LABELS[group], locale).toUpperCase()}
                 </Text>
                 <View style={styles.grid}>
                   {slots.map((slot) => (
@@ -270,7 +300,7 @@ export default function ProjectDashboard() {
           <ActivityIndicator color={colors.primary} size="large" />
           <Text variant="bodyStrong">{publishing}…</Text>
           <Text variant="caption" muted>
-            Building your shareable link
+            {t('project.buildingLink')}
           </Text>
         </View>
       ) : null}
@@ -280,6 +310,7 @@ export default function ProjectDashboard() {
 
 function VinCard({ projectId, initialVin }: { projectId: string; initialVin: string }) {
   const updateProject = useUpdateProject();
+  const t = useT();
   const [text, setText] = useState(initialVin);
   // Re-seed if the project loads/refetches with a different stored VIN.
   const seeded = useRef(initialVin);
@@ -300,20 +331,20 @@ function VinCard({ projectId, initialVin }: { projectId: string; initialVin: str
   return (
     <View style={styles.vinCard}>
       <View style={styles.vinHeader}>
-        <Text variant="bodyStrong">Vehicle</Text>
+        <Text variant="bodyStrong">{t('project.vehicle')}</Text>
       </View>
       <TextField
         value={text}
         onChangeText={setText}
         onBlur={commit}
-        placeholder="VIN (17 characters, on the windshield)"
+        placeholder={t('project.vinPlaceholder')}
         autoCapitalize="characters"
         autoCorrect={false}
         maxLength={20}
       />
       {info && !info.valid && text.trim().length > 0 ? (
         <Text variant="caption" faint>
-          Keep typing — a VIN is 17 characters.
+          {t('project.vinHint')}
         </Text>
       ) : summary ? (
         <View style={styles.vinChips}>
@@ -323,7 +354,7 @@ function VinCard({ projectId, initialVin }: { projectId: string; initialVin: str
         </View>
       ) : (
         <Text variant="caption" faint>
-          Adds the year, make and origin automatically — no internet needed.
+          {t('project.vinAuto')}
         </Text>
       )}
     </View>
@@ -365,13 +396,23 @@ function ShotTile({
   pendingUri?: string | null;
   onPress: () => void;
 }) {
+  const t = useT();
+  const locale = useLocale();
   const { data: url } = useShotSignedUrl(shot?.captured ? (shot.cutout_path ?? shot.image_path) : null);
   // A queued (not-yet-synced) capture shows its local outbox file so offline
   // work is visible immediately, with an "uploading" badge instead of the check.
   const displayUri = url ?? (!shot?.captured ? pendingUri : null);
   const isPending = !shot?.captured && Boolean(pendingUri);
+  const label = localizedLabel(slot, locale);
+  const state = shot?.captured ? t('project.captured') : isPending ? t('project.uploading') : t('project.notCaptured');
   return (
-    <PressableScale style={styles.tile} onPress={onPress} haptic="selection">
+    <PressableScale
+      style={styles.tile}
+      onPress={onPress}
+      haptic="selection"
+      accessibilityRole="button"
+      accessibilityLabel={`${label} — ${state}`}
+    >
       <View style={styles.tileThumb}>
         {displayUri ? (
           <Image
@@ -380,6 +421,7 @@ function ShotTile({
             contentFit="cover"
             cachePolicy="memory-disk"
             transition={120}
+            recyclingKey={shot?.id ?? slot.id}
           />
         ) : (
           <Icon name="plus" size={18} color={colors.textFaint} />
@@ -395,17 +437,45 @@ function ShotTile({
         ) : null}
       </View>
       <Text variant="caption" numberOfLines={1} muted={!shot?.captured && !isPending} center>
-        {slot.label}
+        {label}
       </Text>
     </PressableScale>
   );
 }
 
+// Layout-faithful placeholder while the dashboard loads — steadier than a lone
+// spinner and it makes the wait feel shorter on slow connections.
+function DashboardSkeleton() {
+  return (
+    <View style={styles.content}>
+      <Skeleton height={74} borderRadius={radius.lg} />
+      <Skeleton height={104} borderRadius={radius.lg} />
+      <Skeleton height={56} borderRadius={radius.md} />
+      <View style={styles.actionRow}>
+        <Skeleton height={92} borderRadius={radius.lg} style={styles.skFlex} />
+        <Skeleton height={92} borderRadius={radius.lg} style={styles.skFlex} />
+      </View>
+      <Skeleton width="42%" height={12} />
+      <View style={styles.grid}>
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} aspectRatio={1} borderRadius={radius.md} style={styles.skTile} />
+        ))}
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.hairline,
+  },
   title: { flex: 1, textAlign: 'center' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   content: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xxxl },
   progressCard: {
     backgroundColor: colors.surface,
@@ -414,8 +484,19 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     padding: spacing.lg,
     gap: spacing.sm,
+    ...shadow.sm,
   },
   progressTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  failedCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    padding: spacing.lg,
+    gap: spacing.sm,
+    ...shadow.sm,
+  },
+  failedActions: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.xs },
   track: { height: 8, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, overflow: 'hidden' },
   fill: { height: 8, borderRadius: radius.pill, backgroundColor: colors.primary },
   actionRow: { flexDirection: 'row', gap: spacing.md },
@@ -428,9 +509,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     paddingVertical: spacing.lg,
+    ...shadow.sm,
   },
   group: { gap: spacing.sm },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  skFlex: { flex: 1 },
+  skTile: { width: '31%' },
   tile: { width: '31%', gap: 4 },
   tileThumb: {
     aspectRatio: 1,
@@ -446,7 +530,7 @@ const styles = StyleSheet.create({
   badge: {
     position: 'absolute',
     top: 4,
-    right: 4,
+    end: 4,
     width: 20,
     height: 20,
     borderRadius: 10,
@@ -463,10 +547,11 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     padding: spacing.lg,
     gap: spacing.sm,
+    ...shadow.sm,
   },
   vinHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   vinChips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-  conditionCount: { marginLeft: 'auto' },
+  conditionCount: { marginStart: 'auto' },
   sevChip: {
     flexDirection: 'row',
     alignItems: 'center',

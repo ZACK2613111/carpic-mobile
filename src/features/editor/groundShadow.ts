@@ -31,6 +31,56 @@ export function groundShadowEllipse(width: number, height: number): ShadowEllips
   };
 }
 
+export type Rect = { x: number; y: number; width: number; height: number };
+
+/**
+ * Map a cutout's normalized alpha bounds (0..1 within the source image) to the
+ * car's rectangle in canvas pixels, honoring the `contain` fit used to draw it.
+ * `imageAspect` = imageWidth / imageHeight. Lets the shadow track the real car
+ * instead of assuming a fixed position.
+ */
+export function carRectInCanvas(
+  norm: Rect,
+  imageAspect: number,
+  canvasWidth: number,
+  canvasHeight: number
+): Rect {
+  const canvasAspect = canvasWidth / canvasHeight;
+  let dispW: number;
+  let dispH: number;
+  if (imageAspect > canvasAspect) {
+    // image is wider than the canvas → constrained by width
+    dispW = canvasWidth;
+    dispH = canvasWidth / imageAspect;
+  } else {
+    dispH = canvasHeight;
+    dispW = canvasHeight * imageAspect;
+  }
+  const offsetX = (canvasWidth - dispW) / 2;
+  const offsetY = (canvasHeight - dispH) / 2;
+  return {
+    x: offsetX + norm.x * dispW,
+    y: offsetY + norm.y * dispH,
+    width: norm.width * dispW,
+    height: norm.height * dispH,
+  };
+}
+
+/**
+ * A contact shadow tucked under the car's footprint. `car` is the vehicle's
+ * bounding rect in canvas pixels (derived from the cutout's alpha bounds); the
+ * ellipse sits on the wheel line (rect bottom), a touch narrower than the body.
+ * Falls back to {@link groundShadowEllipse} when no bounds are available.
+ */
+export function groundShadowEllipseFromBounds(car: Rect, canvasHeight: number): ShadowEllipse {
+  return {
+    cx: car.x + car.width / 2,
+    cy: car.y + car.height, // wheels ≈ the bottom of the alpha box
+    rx: car.width * 0.46,
+    ry: Math.max(canvasHeight * 0.012, car.height * 0.05),
+  };
+}
+
 /** The tone the shadow falls on — its bottom-most color. */
 function groundColor(bg: BackgroundPreset): string | null {
   switch (bg.kind) {

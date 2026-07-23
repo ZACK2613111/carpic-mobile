@@ -20,6 +20,8 @@ export type SilhouetteGuide = {
   label: string;
   /** Short framing hint, French. */
   labelFr: string;
+  /** Short framing hint, Arabic. */
+  labelAr: string;
 };
 
 // --- base outlines (body + wheels, single stroked path) ---
@@ -53,26 +55,28 @@ function pathShape(base: { viewBox: string; path: string }, flip: boolean): Guid
 }
 
 const EXTERIOR = { front: 'De face, cadre rempli', profile: 'Profil complet', tq: 'Angle trois-quarts' };
+const EXTERIOR_AR = { front: 'من الأمام، املأ الإطار', profile: 'الجانب كاملًا', tq: 'زاوية ثلاثة أرباع' };
 
 const REGISTRY: Record<GuideId, SilhouetteGuide> = {
-  front: { shape: pathShape(HEADON, false), label: 'Face on, fill the frame', labelFr: EXTERIOR.front },
-  rear: { shape: pathShape(HEADON, false), label: 'Rear, fill the frame', labelFr: 'Arrière, cadre rempli' },
-  sideR: { shape: pathShape(PROFILE, false), label: 'Full side profile', labelFr: EXTERIOR.profile },
-  sideL: { shape: pathShape(PROFILE, true), label: 'Full side profile', labelFr: EXTERIOR.profile },
-  front34r: { shape: pathShape(THREE_QUARTER, false), label: 'Three-quarter angle', labelFr: EXTERIOR.tq },
-  front34l: { shape: pathShape(THREE_QUARTER, true), label: 'Three-quarter angle', labelFr: EXTERIOR.tq },
-  rear34r: { shape: pathShape(THREE_QUARTER, false), label: 'Three-quarter angle', labelFr: EXTERIOR.tq },
-  rear34l: { shape: pathShape(THREE_QUARTER, true), label: 'Three-quarter angle', labelFr: EXTERIOR.tq },
-  wheel: { shape: { kind: 'circle' }, label: 'Fill the frame with the wheel', labelFr: 'Remplir le cadre avec la roue' },
-  detail: { shape: { kind: 'box', ratio: 1.5 }, label: 'Get close, keep it sharp', labelFr: 'Approche, reste net' },
-  interior: { shape: { kind: 'box', ratio: 1.6 }, label: 'Hold steady, wide framing', labelFr: 'Stable, cadrage large' },
-  engine: { shape: { kind: 'box', ratio: 1.6 }, label: 'Open the bonnet', labelFr: 'Ouvre le capot' },
+  front: { shape: pathShape(HEADON, false), label: 'Face on, fill the frame', labelFr: EXTERIOR.front, labelAr: EXTERIOR_AR.front },
+  rear: { shape: pathShape(HEADON, false), label: 'Rear, fill the frame', labelFr: 'Arrière, cadre rempli', labelAr: 'من الخلف، املأ الإطار' },
+  sideR: { shape: pathShape(PROFILE, false), label: 'Full side profile', labelFr: EXTERIOR.profile, labelAr: EXTERIOR_AR.profile },
+  sideL: { shape: pathShape(PROFILE, true), label: 'Full side profile', labelFr: EXTERIOR.profile, labelAr: EXTERIOR_AR.profile },
+  front34r: { shape: pathShape(THREE_QUARTER, false), label: 'Three-quarter angle', labelFr: EXTERIOR.tq, labelAr: EXTERIOR_AR.tq },
+  front34l: { shape: pathShape(THREE_QUARTER, true), label: 'Three-quarter angle', labelFr: EXTERIOR.tq, labelAr: EXTERIOR_AR.tq },
+  rear34r: { shape: pathShape(THREE_QUARTER, false), label: 'Three-quarter angle', labelFr: EXTERIOR.tq, labelAr: EXTERIOR_AR.tq },
+  rear34l: { shape: pathShape(THREE_QUARTER, true), label: 'Three-quarter angle', labelFr: EXTERIOR.tq, labelAr: EXTERIOR_AR.tq },
+  wheel: { shape: { kind: 'circle' }, label: 'Fill the frame with the wheel', labelFr: 'Remplir le cadre avec la roue', labelAr: 'املأ الإطار بالعجلة' },
+  detail: { shape: { kind: 'box', ratio: 1.5 }, label: 'Get close, keep it sharp', labelFr: 'Approche, reste net', labelAr: 'اقترب مع الحفاظ على الوضوح' },
+  interior: { shape: { kind: 'box', ratio: 1.6 }, label: 'Hold steady, wide framing', labelFr: 'Stable, cadrage large', labelAr: 'ثبّت الكاميرا، تأطير واسع' },
+  engine: { shape: { kind: 'box', ratio: 1.6 }, label: 'Open the bonnet', labelFr: 'Ouvre le capot', labelAr: 'افتح غطاء المحرك' },
 };
 
 const FALLBACK: SilhouetteGuide = {
   shape: { kind: 'box', ratio: 1.4 },
   label: 'Center the subject',
   labelFr: 'Centre le sujet',
+  labelAr: 'اجعل الهدف في الوسط',
 };
 
 /** Framing guide for a slot's GuideId. Always defined (falls back to a box). */

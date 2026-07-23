@@ -19,7 +19,6 @@ export type IconName =
   | 'trash'
   | 'sparkles'
   | 'wrench'
-  | 'car'
   | 'undo'
   | 'redo'
   | 'layers'
@@ -121,15 +120,6 @@ const ICONS: Record<IconName, React.ReactNode> = {
   ),
   wrench: (
     <Path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-  ),
-  car: (
-    <>
-      <Path d="M5 17H3v-6l2-5h9l4 5h1a2 2 0 0 1 2 2v4h-2" />
-      <Path d="M9 17h6" />
-      <Path d="M6 11h12" />
-      <Circle cx={7} cy={17} r={2} />
-      <Circle cx={17} cy={17} r={2} />
-    </>
   ),
   undo: (
     <>
