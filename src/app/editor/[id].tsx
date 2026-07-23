@@ -19,6 +19,7 @@ import { useBackgroundRemoval } from '@/features/background-removal/useBackgroun
 import { useBrand, watermarkVisible } from '@/features/branding/brand';
 import { BackgroundStrip } from '@/features/editor/BackgroundStrip';
 import { getBackground } from '@/features/editor/backgrounds';
+import { computeAlphaBoundsFromUri } from '@/features/editor/cutoutBounds';
 import { CoachMarks } from '@/features/editor/CoachMarks';
 import { EngineAudio } from '@/features/editor/EngineAudio';
 import { useEditorStore } from '@/features/editor/editorStore';
@@ -125,6 +126,7 @@ export default function EditorScreen() {
             hotspots: s.hotspots,
             ...(s.shadow !== undefined ? { shadow: s.shadow } : {}),
             ...(s.plate ? { plate: s.plate } : {}),
+            ...(s.bounds ? { bounds: s.bounds } : {}),
           },
         },
       });
@@ -144,6 +146,11 @@ export default function EditorScreen() {
       setCutout(cut);
       haptics.success();
       toast.show(t('editor.bgRemoved'), 'success');
+      // Persist the cutout's alpha footprint so the published viewer can place
+      // an accurate shadow/reflection (best-effort; the editor shadow is live).
+      void computeAlphaBoundsFromUri(cut).then((b) => {
+        if (b) useEditorStore.getState().setBounds(b.norm);
+      });
       if (shot) {
         try {
           const path = await uploadShotAsset(shot.project_id, shot.slot, 'cutout', cut, 'image/png');

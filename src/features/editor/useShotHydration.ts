@@ -47,6 +47,7 @@ export function useShotHydration(shot: Shot | undefined, reloadKey = 0) {
         hotspots: shot.doc?.hotspots ?? [],
         shadow: shot.doc?.shadow,
         plate: shot.doc?.plate,
+        bounds: shot.doc?.bounds,
       });
     })();
   }, [shot, storeProjectId, hydrated, load, reloadKey]);

@@ -69,3 +69,18 @@ export function computeAlphaBounds(image: SkImage): AlphaBounds | null {
     return null; // any Skia hiccup → static-ellipse fallback
   }
 }
+
+/**
+ * Load an encoded image from a file URI and compute its alpha bounds. Used at
+ * cut-out time to persist bounds into the doc (for the published viewer).
+ * Best-effort: returns null on any failure.
+ */
+export async function computeAlphaBoundsFromUri(uri: string): Promise<AlphaBounds | null> {
+  try {
+    const data = await Skia.Data.fromURI(uri);
+    const image = Skia.Image.MakeImageFromEncoded(data);
+    return image ? computeAlphaBounds(image) : null;
+  } catch {
+    return null;
+  }
+}
