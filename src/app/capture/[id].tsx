@@ -143,7 +143,7 @@ export default function CaptureScreen() {
     if (inFlight.current || pending || !slot || !cameraReady) return;
     inFlight.current = true;
     try {
-      const photo = await cameraRef.current?.takePictureAsync({ quality: 0.8, shutterSound: !prefs.fastMode });
+      const photo = await cameraRef.current?.takePictureAsync({ quality: 0.92, shutterSound: !prefs.fastMode });
       if (photo?.uri) {
         const shot: PendingShot = {
           uri: photo.uri,
