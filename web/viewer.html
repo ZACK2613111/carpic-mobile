@@ -138,6 +138,31 @@
         var s = el('div', 'gshadow');
         s.style.opacity = String(shadowOpacity(bgId));
         stage.appendChild(s);
+        return s;
+      }
+      // The car's displayed rect inside a contain-fit <img> (letterbox-aware).
+      function containRect(stageW, stageH, aspect) {
+        var dispW, dispH;
+        if (aspect > stageW / stageH) { dispW = stageW; dispH = stageW / aspect; }
+        else { dispH = stageH; dispW = stageH * aspect; }
+        return { x: (stageW - dispW) / 2, y: (stageH - dispH) / 2, w: dispW, h: dispH };
+      }
+      // Place the ground shadow under the car's real footprint using the alpha
+      // bounds baked into the manifest (matches the app's groundShadowEllipseFromBounds).
+      function positionShadowFromBounds(sh, stage, img, b) {
+        function apply() {
+          var iw = img.naturalWidth, ih = img.naturalHeight;
+          if (!iw || !ih) return;
+          var sw = stage.clientWidth, shh = stage.clientHeight;
+          var fit = containRect(sw, shh, iw / ih);
+          var carW = b.width * fit.w, carH = b.height * fit.h;
+          var cx = fit.x + b.x * fit.w + carW / 2, cy = fit.y + b.y * fit.h + carH;
+          var rx = carW * 0.46, ry = Math.max(shh * 0.012, carH * 0.05);
+          sh.style.left = cx + 'px'; sh.style.top = cy + 'px';
+          sh.style.width = 2 * rx + 'px'; sh.style.height = 2 * ry + 'px';
+        }
+        if (img.complete) apply(); else img.addEventListener('load', apply);
+        window.addEventListener('resize', apply);
       }
       // Manifest-level seller watermark, stamped on every stage (textContent, no HTML).
       var WATERMARK = null;
@@ -237,8 +262,9 @@
         var bg = el('div', 'bg');
         bg.style.background = shot.cutout ? bgFor(shot.backgroundId) : 'transparent';
         stage.appendChild(bg);
-        if (shadowOn(shot.cutout, shot.backgroundId, shot.shadow)) addShadow(stage, shot.backgroundId);
+        var sh = shadowOn(shot.cutout, shot.backgroundId, shot.shadow) ? addShadow(stage, shot.backgroundId) : null;
         var img = el('img'); img.src = shot.url; stage.appendChild(img);
+        if (sh && shot.cutout && shot.bounds) positionShadowFromBounds(sh, stage, img, shot.bounds);
         if (shot.plate) {
           var pl = el('div', shot.plate.style === 'brand' ? 'plate' : 'plate pblur');
           pl.style.left = (shot.plate.x * 100) + '%';
