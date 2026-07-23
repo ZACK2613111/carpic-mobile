@@ -210,7 +210,7 @@ const en = {
   'editor.shotLoadFailed': "This shot couldn't be loaded.",
   'editor.shotGone': 'This shot no longer exists.',
 
-  'coach.welcome': 'Welcome to the studio ✨',
+  'coach.welcome': 'Welcome to the studio',
   'coach.cutoutTitle': 'Cut out',
   'coach.cutoutBody': 'Tap Cut out to remove the background instantly, on your device.',
   'coach.bgTitle': 'Backgrounds',
@@ -522,7 +522,7 @@ const fr: Record<MessageKey, string> = {
   'editor.shotLoadFailed': 'Impossible de charger cette photo.',
   'editor.shotGone': "Cette photo n'existe plus.",
 
-  'coach.welcome': 'Bienvenue au studio ✨',
+  'coach.welcome': 'Bienvenue au studio',
   'coach.cutoutTitle': 'Détourer',
   'coach.cutoutBody': 'Touchez Détourer pour retirer le fond instantanément, sur votre appareil.',
   'coach.bgTitle': 'Arrière-plans',
@@ -831,7 +831,7 @@ const ar: Record<MessageKey, string> = {
   'editor.shotLoadFailed': 'تعذّر تحميل هذه اللقطة.',
   'editor.shotGone': 'لم تعد هذه اللقطة موجودة.',
 
-  'coach.welcome': 'مرحبًا بك في الاستوديو ✨',
+  'coach.welcome': 'مرحبًا بك في الاستوديو',
   'coach.cutoutTitle': 'إزالة الخلفية',
   'coach.cutoutBody': 'انقر على «إزالة الخلفية» لإزالتها فورًا على جهازك.',
   'coach.bgTitle': 'الخلفيات',
