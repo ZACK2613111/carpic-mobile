@@ -105,7 +105,7 @@ export default function SpinCaptureScreen() {
     if (busy) return;
     setBusy(true);
     try {
-      const photo = await cameraRef.current?.takePictureAsync({ quality: 0.7 });
+      const photo = await cameraRef.current?.takePictureAsync({ quality: 0.85 });
       if (photo?.uri) {
         const frameIndex = count;
         const next = count + 1;

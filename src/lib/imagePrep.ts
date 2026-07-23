@@ -14,7 +14,10 @@ export async function prepareForUpload(
   const longest = Math.max(width ?? 0, height ?? 0);
   if (longest > 0 && longest <= MAX_UPLOAD_EDGE) return { uri, resized: false };
   const resize = (height ?? 0) >= (width ?? 0) ? { height: MAX_UPLOAD_EDGE } : { width: MAX_UPLOAD_EDGE };
-  const result = await manipulateAsync(uri, [{ resize }], { compress: 0.8, format: SaveFormat.JPEG });
+  // 0.9 (not 0.8): this is the second JPEG pass after capture, so a higher
+  // quality here avoids visible double-compression artefacts on paint/gradients
+  // — listing-grade output for a modest size bump.
+  const result = await manipulateAsync(uri, [{ resize }], { compress: 0.9, format: SaveFormat.JPEG });
   return { uri: result.uri, resized: true };
 }
 
