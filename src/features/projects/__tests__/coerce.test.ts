@@ -26,6 +26,16 @@ describe('coerceDoc (jsonb boundary)', () => {
     expect(doc.hotspots[0].photoPath).toBeUndefined();
   });
 
+  it('preserves valid cutout bounds and drops out-of-range ones', () => {
+    const ok = coerceDoc({ hotspots: [], bounds: { x: 0.1, y: 0.2, width: 0.6, height: 0.5 } });
+    expect(ok.bounds).toEqual({ x: 0.1, y: 0.2, width: 0.6, height: 0.5 });
+
+    expect(coerceDoc({ hotspots: [], bounds: { x: 0.1, y: 0.2, width: 0, height: 0.5 } }).bounds).toBeUndefined();
+    expect(coerceDoc({ hotspots: [], bounds: { x: -0.1, y: 0.2, width: 0.6, height: 0.5 } }).bounds).toBeUndefined();
+    expect(coerceDoc({ hotspots: [], bounds: { x: 0.1, y: 0.2, width: 1.4, height: 0.5 } }).bounds).toBeUndefined();
+    expect(coerceDoc({ hotspots: [], bounds: 'nope' }).bounds).toBeUndefined();
+  });
+
   it('returns an empty doc for junk input', () => {
     expect(coerceDoc(null).hotspots).toEqual([]);
     expect(coerceDoc('nope').hotspots).toEqual([]);
