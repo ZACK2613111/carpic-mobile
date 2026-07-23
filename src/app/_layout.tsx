@@ -60,6 +60,7 @@ export default function RootLayout() {
                 <Stack.Screen name="capture/spin/[id]" options={{ animation: 'slide_from_bottom' }} />
                 <Stack.Screen name="spin/[id]" options={{ animation: 'slide_from_right' }} />
                 <Stack.Screen name="editor/[id]" options={{ animation: 'slide_from_right' }} />
+                <Stack.Screen name="preview/[id]" options={{ animation: 'slide_from_right' }} />
               </Stack>
             </AuthProvider>
           </ToastProvider>
