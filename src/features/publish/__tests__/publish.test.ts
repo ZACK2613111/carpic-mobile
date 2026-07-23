@@ -106,6 +106,21 @@ describe('publishProject', () => {
     await expect(publishProject(project(), [shot()])).rejects.toThrow(/viewer/i);
   });
 
+  it('emits cutout bounds for a cut-out shot (and null for a raw one)', async () => {
+    const bounds = { x: 0.15, y: 0.5, width: 0.7, height: 0.42 };
+    const cut = shot({ id: 'c', cutout_path: 'uid-1/p1/shots/ext-front/cutout.png', doc: { version: 1, hotspots: [], bounds } });
+    const raw = shot({ id: 'r', slot: 'ext-rear', position: 4 });
+    await publishProject(project(), [cut, raw]);
+
+    const manifest = lastManifest();
+    const cutShot = manifest.shots.find((s: { slot: string }) => s.slot === 'ext-front');
+    const rawShot = manifest.shots.find((s: { slot: string }) => s.slot === 'ext-rear');
+    expect(cutShot.cutout).toBe(true);
+    expect(cutShot.bounds).toEqual(bounds);
+    expect(rawShot.cutout).toBe(false);
+    expect(rawShot.bounds).toBeNull();
+  });
+
   it('includes a signed spin block when the project has a 360', async () => {
     const proj = project({ spin: { frameCount: 2, hasCutout: true, backgroundId: 'studio-blue', hotspots: [] } });
     await publishProject(proj, [shot()]);

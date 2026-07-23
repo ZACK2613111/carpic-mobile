@@ -70,6 +70,9 @@ export async function publishProject(project: Project, shots: Shot[], onStep?: P
         url,
         cutout: useCutout,
         backgroundId: s.background_id,
+        // Alpha footprint of the cutout → lets the viewer place the shadow +
+        // reflection under the real car. Only meaningful when showing a cutout.
+        bounds: useCutout ? (s.doc?.bounds ?? null) : null,
         hotspots: await signHotspotPhotos(s.doc?.hotspots),
         shadow: s.doc?.shadow ?? null,
         plate: s.doc?.plate ?? null,
