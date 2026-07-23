@@ -1,0 +1,36 @@
+name: CI
+
+# Runs the same checks we run locally, on every push and pull request, so a
+# broken typecheck / lint / test never reaches main.
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    name: typecheck · lint · test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test -- --ci
+
+      # Informational only — surfaces Expo config drift without failing the build.
+      - name: expo-doctor
+        run: npx expo-doctor
+        continue-on-error: true
