@@ -50,6 +50,18 @@ const en = {
   'auth.codeSendFailed': "Couldn't send the code",
   'auth.resendCode': 'Send a new code',
   'auth.changeEmail': 'Use a different email',
+  'onboarding.skip': 'Skip',
+  'onboarding.next': 'Next',
+  'onboarding.getStarted': 'Get started',
+  'onboarding.s1Title': 'Guided photos, every angle',
+  'onboarding.s1Body':
+    'The app walks you through each shot — exterior, wheels, interior and a 360° spin — so every listing looks complete and consistent.',
+  'onboarding.s2Title': 'A studio background, on the spot',
+  'onboarding.s2Body':
+    'Remove the background right on your phone — offline and free — then place the car on a clean studio scene.',
+  'onboarding.s3Title': 'A link that sells',
+  'onboarding.s3Body':
+    'Publish an interactive page — 360°, gallery and highlight points — that buyers open in any browser.',
   'auth.missingInfo': 'Missing info',
   'auth.enterEmailPassword': 'Enter your email and password.',
   'auth.signInFailed': 'Sign in failed',
@@ -385,6 +397,18 @@ const fr: Record<MessageKey, string> = {
   'auth.codeSendFailed': "Impossible d'envoyer le code",
   'auth.resendCode': 'Renvoyer un code',
   'auth.changeEmail': "Changer d'email",
+  'onboarding.skip': 'Passer',
+  'onboarding.next': 'Suivant',
+  'onboarding.getStarted': 'Commencer',
+  'onboarding.s1Title': 'Des photos guidées, tous les angles',
+  'onboarding.s1Body':
+    "L'app vous guide pour chaque prise — extérieur, roues, intérieur et un tour 360° — pour des annonces complètes et homogènes.",
+  'onboarding.s2Title': 'Un fond studio, sur place',
+  'onboarding.s2Body':
+    'Détourez la voiture directement sur votre téléphone — hors ligne et gratuit — puis posez-la sur une scène studio nette.',
+  'onboarding.s3Title': 'Un lien qui vend',
+  'onboarding.s3Body':
+    "Publiez une page interactive — 360°, galerie et points forts — que l'acheteur ouvre dans n'importe quel navigateur.",
   'auth.missingInfo': 'Informations manquantes',
   'auth.enterEmailPassword': 'Saisissez votre e-mail et votre mot de passe.',
   'auth.signInFailed': 'Échec de la connexion',
@@ -719,6 +743,18 @@ const ar: Record<MessageKey, string> = {
   'auth.codeSendFailed': 'تعذّر إرسال الرمز',
   'auth.resendCode': 'إرسال رمز جديد',
   'auth.changeEmail': 'استخدام بريد آخر',
+  'onboarding.skip': 'تخطّي',
+  'onboarding.next': 'التالي',
+  'onboarding.getStarted': 'ابدأ',
+  'onboarding.s1Title': 'صور موجّهة من كل زاوية',
+  'onboarding.s1Body':
+    'يرشدك التطبيق في كل لقطة — الخارج والعجلات والداخل ولقطة 360° — لتكون إعلاناتك كاملة ومتناسقة.',
+  'onboarding.s2Title': 'خلفية استوديو في الحال',
+  'onboarding.s2Body':
+    'أزل الخلفية مباشرة على هاتفك — دون إنترنت ومجانًا — ثم ضع السيارة على مشهد استوديو نظيف.',
+  'onboarding.s3Title': 'رابط يبيع',
+  'onboarding.s3Body':
+    'انشر صفحة تفاعلية — 360° ومعرض ونقاط بارزة — يفتحها المشتري في أي متصفح.',
   'auth.missingInfo': 'معلومات ناقصة',
   'auth.enterEmailPassword': 'أدخل بريدك الإلكتروني وكلمة المرور.',
   'auth.signInFailed': 'فشل تسجيل الدخول',
