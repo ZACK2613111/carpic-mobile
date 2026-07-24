@@ -62,6 +62,7 @@
             "deploymentTarget": "17.0"
           },
           "android": {
+            "minSdkVersion": 25,
             "enableProguardInReleaseBuilds": true,
             "enableShrinkResourcesInReleaseBuilds": true,
             "extraProguardRules": "-keep class com.google.mlkit.** { *; }\n-dontwarn com.google.mlkit.**"
@@ -98,7 +99,11 @@
         }
       ],
       "expo-asset",
-      "expo-localization"
+      "expo-localization",
+      "@logrocket/react-native",
+      "expo-image",
+      "expo-status-bar",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

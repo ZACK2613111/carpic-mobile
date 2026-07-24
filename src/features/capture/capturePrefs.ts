@@ -13,10 +13,12 @@ export type CapturePrefs = {
   grid: boolean;
   /** Live horizon / level guide (needs a device motion sensor). */
   level: boolean;
+  /** Fire the shutter automatically once the phone is held level and steady. */
+  autoCapture: boolean;
 };
 
 const KEY = 'capture:v1';
-const DEFAULT: CapturePrefs = { fastMode: false, grid: true, level: true };
+const DEFAULT: CapturePrefs = { fastMode: false, grid: true, level: true, autoCapture: false };
 
 let state: CapturePrefs = DEFAULT;
 let loaded = false;
@@ -32,6 +34,7 @@ export function coerceCapturePrefs(value: unknown): CapturePrefs {
     fastMode: o.fastMode === undefined ? DEFAULT.fastMode : Boolean(o.fastMode),
     grid: o.grid === undefined ? DEFAULT.grid : Boolean(o.grid),
     level: o.level === undefined ? DEFAULT.level : Boolean(o.level),
+    autoCapture: o.autoCapture === undefined ? DEFAULT.autoCapture : Boolean(o.autoCapture),
   };
 }
 

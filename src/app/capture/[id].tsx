@@ -18,6 +18,7 @@ import { Filmstrip } from '@/features/capture/Filmstrip';
 import { GuideOverlay } from '@/features/capture/GuideOverlay';
 import { setCapturePrefs, useCapturePrefs } from '@/features/capture/capturePrefs';
 import { localizedLabel, SHOT_TEMPLATE, slotPosition } from '@/features/capture/shotTemplate';
+import { useAutoCapture } from '@/features/capture/useAutoCapture';
 import { useHorizonLevel } from '@/features/capture/useHorizonLevel';
 import type { Shot } from '@/features/shots/types';
 import { useShots } from '@/features/shots/useShots';
@@ -51,7 +52,8 @@ export default function CaptureScreen() {
   const [permission, requestPermission] = useCameraPermissions();
 
   const prefs = useCapturePrefs();
-  const level = useHorizonLevel(prefs.level);
+  // Auto-capture needs the motion sensor even when the visual level guide is off.
+  const level = useHorizonLevel(prefs.level || prefs.autoCapture);
 
   const [index, setIndex] = useState(() => (start ? slotPosition(start) : 0));
   const [pending, setPending] = useState<PendingShot | null>(null);
@@ -178,6 +180,15 @@ export default function CaptureScreen() {
     }
   }, [pending, slot, cameraReady, prefs.fastMode, index, total, stashShot, router, toast, t]);
 
+  // Auto-capture: fire the shutter once the phone is held level and steady. Gated
+  // on the sensor being present and on us not already reviewing / saving a shot.
+  const auto = useAutoCapture({
+    enabled: prefs.autoCapture && level.available,
+    active: cameraReady && !pending && !busy,
+    levelStatus: level.status,
+    onFire: onShutter,
+  });
+
   const onUse = useCallback(() => {
     if (pending) void commitShot(pending);
   }, [pending, commitShot]);
@@ -254,12 +265,20 @@ export default function CaptureScreen() {
               {index + 1} / {total}
             </Text>
           </View>
-          <IconButton
-            name="grid"
-            variant={prefs.grid ? 'primary' : 'surface'}
-            accessibilityLabel={t('capture.toggleGrid')}
-            onPress={() => setCapturePrefs({ grid: !prefs.grid })}
-          />
+          <View style={styles.topRight}>
+            <IconButton
+              name="sparkles"
+              variant={prefs.autoCapture ? 'primary' : 'surface'}
+              accessibilityLabel={t('settings.autoCapture')}
+              onPress={() => setCapturePrefs({ autoCapture: !prefs.autoCapture })}
+            />
+            <IconButton
+              name="grid"
+              variant={prefs.grid ? 'primary' : 'surface'}
+              accessibilityLabel={t('capture.toggleGrid')}
+              onPress={() => setCapturePrefs({ grid: !prefs.grid })}
+            />
+          </View>
         </View>
 
         {/* bottom controls */}
@@ -280,6 +299,14 @@ export default function CaptureScreen() {
             </View>
           ) : (
             <>
+              {auto.counting ? (
+                <View style={styles.autoPill}>
+                  <Icon name="sparkles" size={14} color="#0B0B0F" />
+                  <Text variant="caption" color="#0B0B0F">
+                    {t('guide.autoHold')}
+                  </Text>
+                </View>
+              ) : null}
               <Filmstrip
                 bySlot={bySlot}
                 pendingUriBySlot={pendingUriBySlot}
@@ -331,6 +358,17 @@ const styles = StyleSheet.create({
   review: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#000' },
   ui: { flex: 1, justifyContent: 'space-between' },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.md },
+  topRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  autoPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    gap: 6,
+    backgroundColor: '#34D399',
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+  },
   progressPill: {
     backgroundColor: colors.scrim,
     paddingHorizontal: spacing.md,
