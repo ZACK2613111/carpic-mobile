@@ -2,7 +2,8 @@ import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -23,6 +24,35 @@ export { ScreenErrorBoundary as ErrorBoundary } from '@/components/ScreenErrorBo
 export default function RootLayout() {
   const [fontsLoaded] = useFonts(fontAssets);
 
+  // Skia's web build needs CanvasKit (WASM) loaded before any Skia surface,
+  // matchFont() or <Canvas> renders. Native ships CanvasKit in the binary, so we
+  // gate only on web. The import is dynamic + platform-guarded so the web-only
+  // module never enters the native bundle; the WASM is fetched from a CDN because
+  // Metro doesn't serve it as a static asset in dev.
+  const [skiaReady, setSkiaReady] = useState(Platform.OS !== 'web');
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    let alive = true;
+    import('@shopify/react-native-skia/lib/commonjs/web')
+      .then((m) =>
+        m.LoadSkiaWeb({
+          locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/canvaskit-wasm@0.41.0/bin/full/${file}`,
+        }),
+      )
+      .then(() => {
+        if (alive) setSkiaReady(true);
+      })
+      .catch((e) => {
+        // Don't hard-block: let the app render so non-Skia screens work and any
+        // Skia screen falls back to its error boundary instead of a blank gate.
+        console.warn('Skia web init failed', e);
+        if (alive) setSkiaReady(true);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   // Restore the persisted upload outbox and start draining (offline-first).
   useEffect(() => {
     void initI18n();
@@ -32,8 +62,8 @@ export default function RootLayout() {
   }, []);
 
   // Hold the first frame until the typeface is ready so text doesn't reflow
-  // from a system-font flash into Sora.
-  if (!fontsLoaded) return null;
+  // from a system-font flash into Sora — and, on web, until CanvasKit is loaded.
+  if (!fontsLoaded || !skiaReady) return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
