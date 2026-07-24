@@ -44,12 +44,27 @@ const EDGE_FEATHER = 0.8;
 // Strong enough that plate characters can't be read back, even zoomed.
 const PLATE_BLUR = 12;
 
-const font = matchFont({
-  fontFamily: Platform.select({ ios: 'Helvetica', android: 'sans-serif', default: 'sans-serif' }) as string,
-  fontSize: FONT_SIZE,
-  fontStyle: 'normal',
-  fontWeight: 'bold',
-});
+// matchFont() reaches into Skia's CanvasKit, which on web is not initialized at
+// module-eval time (and calling a native API at import is fragile regardless).
+// Compute lazily + cache: `undefined` = not tried yet, `null` = unavailable, in
+// which case the pin/watermark text is simply skipped (both call sites guard it).
+type SkFontOrNull = ReturnType<typeof matchFont> | null;
+let _pinFont: SkFontOrNull | undefined;
+function pinFont(): SkFontOrNull {
+  if (_pinFont === undefined) {
+    try {
+      _pinFont = matchFont({
+        fontFamily: Platform.select({ ios: 'Helvetica', android: 'sans-serif', default: 'sans-serif' }) as string,
+        fontSize: FONT_SIZE,
+        fontStyle: 'normal',
+        fontWeight: 'bold',
+      });
+    } catch {
+      _pinFont = null;
+    }
+  }
+  return _pinFont;
+}
 
 type Props = {
   width: number;
@@ -147,12 +162,22 @@ export function StudioCanvas({
 }
 
 const WM_FONT_SIZE = 16;
-const wmFont = matchFont({
-  fontFamily: Platform.select({ ios: 'Helvetica', android: 'sans-serif', default: 'sans-serif' }) as string,
-  fontSize: WM_FONT_SIZE,
-  fontStyle: 'normal',
-  fontWeight: 'bold',
-});
+let _wmFont: SkFontOrNull | undefined;
+function watermarkFont(): SkFontOrNull {
+  if (_wmFont === undefined) {
+    try {
+      _wmFont = matchFont({
+        fontFamily: Platform.select({ ios: 'Helvetica', android: 'sans-serif', default: 'sans-serif' }) as string,
+        fontSize: WM_FONT_SIZE,
+        fontStyle: 'normal',
+        fontWeight: 'bold',
+      });
+    } catch {
+      _wmFont = null;
+    }
+  }
+  return _wmFont;
+}
 
 function Watermark({
   text,
@@ -169,7 +194,8 @@ function Watermark({
   const margin = Math.round(Math.min(width, height) * 0.04);
   const padX = 10;
   const padY = 6;
-  const textW = wmFont ? wmFont.measureText(text).width : text.length * WM_FONT_SIZE * 0.55;
+  const wmFontValue = watermarkFont();
+  const textW = wmFontValue ? wmFontValue.measureText(text).width : text.length * WM_FONT_SIZE * 0.55;
   const boxW = textW + padX * 2;
   const boxH = WM_FONT_SIZE + padY * 2;
   const anchor = watermarkAnchor(position, width, height, margin);
@@ -182,7 +208,7 @@ function Watermark({
   return (
     <Group>
       <RoundedRect x={boxX} y={boxY} width={boxW} height={boxH} r={boxH / 2} color="#000000" opacity={0.42} />
-      {wmFont ? <SkiaText x={textX} y={textY} text={text} font={wmFont} color="#FFFFFF" /> : null}
+      {wmFontValue ? <SkiaText x={textX} y={textY} text={text} font={wmFontValue} color="#FFFFFF" /> : null}
     </Group>
   );
 }
@@ -326,8 +352,8 @@ function PinLayer({
       {selected ? <Circle cx={cx} cy={cy} r={r + 5} color="#FFFFFF" opacity={0.85} /> : null}
       <Circle cx={cx} cy={cy} r={r} color={color} />
       <Circle cx={cx} cy={cy} r={r} style="stroke" strokeWidth={2.5} color="#FFFFFF" />
-      {font ? (
-        <SkiaText x={cx - approxWidth / 2} y={cy + FONT_SIZE * 0.36} text={label} font={font} color="#FFFFFF" />
+      {pinFont() ? (
+        <SkiaText x={cx - approxWidth / 2} y={cy + FONT_SIZE * 0.36} text={label} font={pinFont()!} color="#FFFFFF" />
       ) : null}
       {h.photoPath ? (
         <Group>
