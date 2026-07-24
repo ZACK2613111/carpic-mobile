@@ -140,6 +140,7 @@ export default function ProjectDashboard() {
   }, [publishedUrl]);
 
   const openSlot = (slot: ShotSlot) => {
+    if (!id) return; // no project id -> the screen already renders NotFound
     const shot = bySlot[slot.id];
     if (shot?.captured) {
       router.push({ pathname: '/editor/[id]', params: { id: shot.id } });
