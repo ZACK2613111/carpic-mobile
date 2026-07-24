@@ -8,13 +8,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { Checkerboard } from '@/components/Checkerboard';
-import { Icon } from '@/components/Icon';
 import { IconButton } from '@/components/IconButton';
 import { NotFound } from '@/components/NotFound';
-import { PressableScale } from '@/components/PressableScale';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
+import { ToggleChip } from '@/components/ToggleChip';
 import { useBackgroundRemoval } from '@/features/background-removal/useBackgroundRemoval';
 import { useBrand, watermarkVisible } from '@/features/branding/brand';
 import { BackgroundStrip } from '@/features/editor/BackgroundStrip';
@@ -414,27 +413,6 @@ export default function EditorScreen() {
   );
 }
 
-function ToggleChip({
-  icon,
-  label,
-  active,
-  onPress,
-}: {
-  icon: 'sparkles' | 'crosshair';
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <PressableScale style={[styles.toggleChip, active ? styles.toggleChipOn : null]} onPress={onPress}>
-      <Icon name={icon} size={16} color={active ? colors.primary : colors.textMuted} />
-      <Text variant="label" color={active ? colors.primary : colors.textMuted}>
-        {label}
-      </Text>
-    </PressableScale>
-  );
-}
-
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   header: {
@@ -507,17 +485,4 @@ const styles = StyleSheet.create({
   toolbar: { flexDirection: 'row', gap: spacing.md, paddingHorizontal: spacing.lg, paddingTop: spacing.md },
   flex: { flex: 1 },
   toggleRow: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingTop: spacing.md },
-  toggleChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    alignSelf: 'flex-start',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  toggleChipOn: { borderColor: colors.primary, backgroundColor: `${colors.primary}18` },
 });
