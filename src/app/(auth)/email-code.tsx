@@ -7,6 +7,7 @@ import { Button } from '@/components/Button';
 import { Text } from '@/components/Text';
 import { TextField } from '@/components/TextField';
 import { isSupabaseConfigured } from '@/lib/env';
+import { errorMessage } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
 import { isValidEmail } from '@/lib/validation';
 import { useAuth } from '@/providers/AuthProvider';
@@ -31,7 +32,7 @@ export default function EmailCode() {
       await sendEmailCode(email.trim());
       setSent(true);
     } catch (e) {
-      Alert.alert(t('auth.codeSendFailed'), e instanceof Error ? e.message : t('common.tryAgain'));
+      Alert.alert(t('auth.codeSendFailed'), errorMessage(e, t('common.tryAgain')));
     } finally {
       setBusy(false);
     }
@@ -47,7 +48,7 @@ export default function EmailCode() {
       await verifyEmailCode(email.trim(), code.trim());
       router.replace('/'); // session set -> the (auth) guard also redirects
     } catch (e) {
-      Alert.alert(t('auth.codeFailed'), e instanceof Error ? e.message : t('common.tryAgain'));
+      Alert.alert(t('auth.codeFailed'), errorMessage(e, t('common.tryAgain')));
     } finally {
       setBusy(false);
     }

@@ -10,6 +10,7 @@ import { SocialButton } from '@/components/SocialButton';
 import { Text } from '@/components/Text';
 import { TextField } from '@/components/TextField';
 import { isSupabaseConfigured } from '@/lib/env';
+import { errorMessage } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
 import { isValidEmail } from '@/lib/validation';
 import { useAuth, type SocialProvider } from '@/providers/AuthProvider';
@@ -37,7 +38,7 @@ export default function SignIn() {
       await signIn(email.trim(), password);
       router.replace('/');
     } catch (e) {
-      Alert.alert(t('auth.signInFailed'), e instanceof Error ? e.message : t('common.tryAgain'));
+      Alert.alert(t('auth.signInFailed'), errorMessage(e, t('common.tryAgain')));
     } finally {
       setBusy(false);
     }
@@ -49,7 +50,7 @@ export default function SignIn() {
       const ok = await signInWithProvider(provider);
       if (ok) router.replace('/');
     } catch (e) {
-      Alert.alert(t('auth.signInFailed'), e instanceof Error ? e.message : t('common.tryAgain'));
+      Alert.alert(t('auth.signInFailed'), errorMessage(e, t('common.tryAgain')));
     } finally {
       setBusy(false);
     }
