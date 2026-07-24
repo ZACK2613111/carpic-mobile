@@ -114,6 +114,13 @@ export default function SettingsScreen() {
             on={prefs.level}
             onToggle={() => setCapturePrefs({ level: !prefs.level })}
           />
+          <ToggleRow
+            icon="sparkles"
+            label={t('settings.autoCapture')}
+            hint={t('settings.autoCaptureHint')}
+            on={prefs.autoCapture}
+            onToggle={() => setCapturePrefs({ autoCapture: !prefs.autoCapture })}
+          />
         </Section>
 
         <Section title={t('settings.watermark')}>

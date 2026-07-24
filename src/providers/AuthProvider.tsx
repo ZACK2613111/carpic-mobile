@@ -145,7 +145,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // explicit sign-out so no stale data lingers.
         explicitSignOut.current = true;
         try {
-          await supabase.auth.signOut();
+          // 'local' scope: the server user is already gone, so a global sign-out
+          // (which hits /logout) would 403 and throw — clear the device session only.
+          await supabase.auth.signOut({ scope: 'local' });
         } finally {
           explicitSignOut.current = false;
         }
@@ -153,7 +155,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async signOut() {
         explicitSignOut.current = true;
         try {
-          await supabase.auth.signOut();
+          // 'local' scope clears THIS device's session straight from storage with no
+          // network call. A default global sign-out hits the server and throws when
+          // the token is expired or the device is offline — leaving the user still
+          // signed in ("logout doesn't work"). Local always succeeds.
+          await supabase.auth.signOut({ scope: 'local' });
         } finally {
           explicitSignOut.current = false;
         }

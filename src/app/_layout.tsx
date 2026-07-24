@@ -1,3 +1,4 @@
+import LogRocket from '@logrocket/react-native';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
@@ -53,6 +54,12 @@ export default function RootLayout() {
     return () => {
       alive = false;
     };
+  }, []);
+
+  // Session replay + error capture (LogRocket). Native module: no-op in Expo Go,
+  // records only in a dev/EAS build. App ID lives at app.logrocket.com/dbocgq/car-studio.
+  useEffect(() => {
+    LogRocket.init('dbocgq/car-studio');
   }, []);
 
   // Restore the persisted upload outbox and start draining (offline-first).
