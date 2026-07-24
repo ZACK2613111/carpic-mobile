@@ -60,10 +60,76 @@
     <div class="wrap" id="app"><div class="loading">Chargement…</div></div>
 
     <script>
+      // --- Lightweight i18n (EN/FR/AR) --------------------------------------
+      // The remote helper who shoots the photos may read Arabic or French, so
+      // the page localizes its chrome. System fonts cover all three (no font
+      // download on a metered link). Language: ?lang= first, else browser, else EN.
+      var STRINGS = {
+        en: {
+          pageTitle: 'Vehicle photos — CarStudio', loading: 'Loading…',
+          linkInvalid: 'Invalid or expired link', openAsSent: 'Open the link exactly as it was sent to you.',
+          askNewLink: 'Ask the person who sent it for a new link.', tryAgain: 'Please try again in a moment.',
+          photosTitle: 'Photos', vehicle: 'vehicle',
+          intro: 'You’ve been asked to photograph this vehicle. Follow the list — each button opens your camera directly. You can close the page and come back later.',
+          sent: 'Photos sent', prepare: 'Preparing…', sending: 'Sending…', sentState: 'Sent',
+          retake: 'Retake', take: 'Take', alreadySent: 'Already sent', toTake: 'To take',
+          uploadRefused: 'upload refused', failed: 'Failed', retrySuffix: ' — try again',
+          allDone: 'All photos sent — thank you! You can close the page.',
+          secure: 'Your photos are sent securely · CarStudio',
+          grpExterior: 'Exterior', grpWheels: 'Wheels', grpInterior: 'Interior', grpDocs: 'Documents', grpEngine: 'Engine'
+        },
+        fr: {
+          pageTitle: 'Photos du véhicule — CarStudio', loading: 'Chargement…',
+          linkInvalid: 'Lien invalide ou expiré', openAsSent: 'Ouvrez le lien exactement tel qu’il vous a été envoyé.',
+          askNewLink: 'Demandez un nouveau lien à la personne qui vous l’a envoyé.', tryAgain: 'Réessayez dans un instant.',
+          photosTitle: 'Photos', vehicle: 'véhicule',
+          intro: 'On vous a demandé de photographier ce véhicule. Suivez la liste — chaque bouton ouvre directement votre appareil photo. Vous pouvez fermer la page et reprendre plus tard.',
+          sent: 'Photos envoyées', prepare: 'Préparation…', sending: 'Envoi…', sentState: 'Envoyée',
+          retake: 'Reprendre', take: 'Prendre', alreadySent: 'Déjà envoyée', toTake: 'À prendre',
+          uploadRefused: 'envoi refusé', failed: 'Échec', retrySuffix: ' — réessayez',
+          allDone: 'Toutes les photos sont envoyées — merci ! Vous pouvez fermer la page.',
+          secure: 'Vos photos sont transmises de façon sécurisée · CarStudio',
+          grpExterior: 'Extérieur', grpWheels: 'Roues', grpInterior: 'Intérieur', grpDocs: 'Documents', grpEngine: 'Moteur'
+        },
+        ar: {
+          pageTitle: 'صور المركبة — CarStudio', loading: 'جارٍ التحميل…',
+          linkInvalid: 'الرابط غير صالح أو منتهي الصلاحية', openAsSent: 'افتح الرابط تمامًا كما أُرسل إليك.',
+          askNewLink: 'اطلب رابطًا جديدًا ممن أرسله إليك.', tryAgain: 'أعد المحاولة بعد قليل.',
+          photosTitle: 'صور', vehicle: 'مركبة',
+          intro: 'طُلب منك تصوير هذه المركبة. اتبع القائمة — كل زر يفتح الكاميرا مباشرة. يمكنك إغلاق الصفحة والمتابعة لاحقًا.',
+          sent: 'الصور المُرسَلة', prepare: 'جارٍ التحضير…', sending: 'جارٍ الإرسال…', sentState: 'أُرسلت',
+          retake: 'إعادة', take: 'التقاط', alreadySent: 'أُرسلت مسبقًا', toTake: 'للالتقاط',
+          uploadRefused: 'رُفض الإرسال', failed: 'فشل', retrySuffix: ' — أعد المحاولة',
+          allDone: 'تم إرسال جميع الصور — شكرًا! يمكنك إغلاق الصفحة.',
+          secure: 'تُرسَل صورك بأمان · CarStudio',
+          grpExterior: 'الخارجية', grpWheels: 'العجلات', grpInterior: 'الداخلية', grpDocs: 'الوثائق', grpEngine: 'المحرك'
+        }
+      };
       var qs = new URLSearchParams(location.search);
+      function pickLang() {
+        var cand = String(qs.get('lang') || navigator.language || 'en').toLowerCase();
+        if (cand.indexOf('ar') === 0) return 'ar';
+        if (cand.indexOf('fr') === 0) return 'fr';
+        return 'en';
+      }
+      var LANG = pickLang();
+      var TT = STRINGS[LANG] || STRINGS.en;
+      function t(k) { return TT[k] != null ? TT[k] : (STRINGS.en[k] != null ? STRINGS.en[k] : k); }
+      document.documentElement.setAttribute('lang', LANG);
+      if (LANG === 'ar') document.documentElement.setAttribute('dir', 'rtl');
+      document.title = t('pageTitle');
+
+      // Localized slot label: prefer the reader's language, fall back gracefully
+      // (the manifest carries labelFr + label today; labelAr is optional).
+      function slotLabel(s) {
+        if (LANG === 'ar') return s.labelAr || s.labelFr || s.label;
+        if (LANG === 'en') return s.label || s.labelFr;
+        return s.labelFr || s.label;
+      }
+
       var TOKEN = qs.get('t');
       var FNS = qs.get('e'); // Edge Functions base URL, provided by the app link
-      var GROUPS = { exterior: 'Extérieur', wheels: 'Pneus', interior: 'Intérieur', docs: 'Documents', engine: 'Moteur' };
+      var GROUPS = { exterior: t('grpExterior'), wheels: t('grpWheels'), interior: t('grpInterior'), docs: t('grpDocs'), engine: t('grpEngine') };
       var GROUP_ORDER = ['exterior', 'wheels', 'interior', 'docs', 'engine'];
       // Same data rule as the app: photos are resized before upload.
       var MAX_DIM = 2000;
@@ -83,7 +149,7 @@
       function fail(msg) {
         app.innerHTML = '';
         var d = el('div', 'err');
-        d.appendChild(el('b', null, 'Lien invalide ou expiré'));
+        d.appendChild(el('b', null, t('linkInvalid')));
         d.appendChild(document.createElement('br'));
         d.appendChild(document.createTextNode(msg));
         app.appendChild(d);
@@ -131,17 +197,17 @@
       function upload(slot, row, file) {
         var btn = row.querySelector('button');
         btn.disabled = true;
-        setState(row, null, 'Préparation…', true);
+        setState(row, null, t('prepare'), true);
         resizeToJpeg(file)
           .then(function (blob) {
-            setState(row, null, 'Envoi…', true);
+            setState(row, null, t('sending'), true);
             return fetch(FNS + '/capture-upload?t=' + encodeURIComponent(TOKEN) + '&slot=' + encodeURIComponent(slot.id), {
               method: 'POST',
               headers: { 'content-type': 'image/jpeg' },
               body: blob,
             }).then(function (r) {
               if (!r.ok) return r.json().catch(function () { return {}; }).then(function (j) {
-                throw new Error(j.error || ('envoi refusé (' + r.status + ')'));
+                throw new Error(j.error || (t('uploadRefused') + ' (' + r.status + ')'));
               });
             });
           })
@@ -152,14 +218,14 @@
             var im = document.createElement('img');
             im.src = URL.createObjectURL(file);
             thumb.appendChild(im);
-            setState(row, 'ok', 'Envoyée');
-            btn.textContent = 'Reprendre';
+            setState(row, 'ok', t('sentState'));
+            btn.textContent = t('retake');
             btn.className = 'redo';
             btn.disabled = false;
             updateProgress();
           })
           .catch(function (e) {
-            setState(row, 'err', (e && e.message ? e.message : 'Échec') + ' — réessayez');
+            setState(row, 'err', (e && e.message ? e.message : t('failed')) + t('retrySuffix'));
             btn.disabled = false;
           });
       }
@@ -169,15 +235,15 @@
         var thumb = el('div', 'thumb');
         row.appendChild(thumb);
         var meta = el('div', 'meta');
-        meta.appendChild(el('div', 'label', slot.labelFr || slot.label));
-        meta.appendChild(el('div', 'state' + (slot.done ? ' ok' : ''), slot.done ? 'Déjà envoyée' : 'À prendre'));
+        meta.appendChild(el('div', 'label', slotLabel(slot)));
+        meta.appendChild(el('div', 'state' + (slot.done ? ' ok' : ''), slot.done ? t('alreadySent') : t('toTake')));
         row.appendChild(meta);
 
         var input = document.createElement('input');
         input.type = 'file';
         input.accept = 'image/*';
         input.setAttribute('capture', 'environment');
-        var btn = el('button', slot.done ? 'redo' : '', slot.done ? 'Reprendre' : 'Prendre');
+        var btn = el('button', slot.done ? 'redo' : '', slot.done ? t('retake') : t('take'));
         btn.onclick = function () { input.click(); };
         input.onchange = function () {
           if (input.files && input.files[0]) upload(slot, row, input.files[0]);
@@ -193,14 +259,12 @@
         doneCount = slots.filter(function (s) { return s.done; }).length;
         app.innerHTML = '';
         app.appendChild(el('div', 'brand', 'CarStudio'));
-        app.appendChild(el('h1', null, 'Photos — ' + (manifest.name || 'véhicule')));
-        app.appendChild(el('p', 'sub',
-          'On vous a demandé de photographier ce véhicule. Suivez la liste — chaque bouton ouvre '
-          + 'directement votre appareil photo. Vous pouvez fermer la page et reprendre plus tard.'));
+        app.appendChild(el('h1', null, t('photosTitle') + ' — ' + (manifest.name || t('vehicle'))));
+        app.appendChild(el('p', 'sub', t('intro')));
 
         var card = el('div', 'progressCard');
         var top = el('div', 'progressTop');
-        top.appendChild(el('span', null, 'Photos envoyées'));
+        top.appendChild(el('span', null, t('sent')));
         var count = el('span'); count.id = 'count';
         top.appendChild(count);
         card.appendChild(top);
@@ -217,24 +281,26 @@
           list.forEach(function (s) { app.appendChild(slotRow(s)); });
         });
 
-        var banner = el('div', 'doneBanner', 'Toutes les photos sont envoyées — merci ! Vous pouvez fermer la page.');
+        var banner = el('div', 'doneBanner', t('allDone'));
         banner.id = 'doneBanner';
         banner.style.display = 'none';
         app.appendChild(banner);
 
-        app.appendChild(el('div', 'footer', 'Vos photos sont transmises de façon sécurisée · CarStudio'));
+        app.appendChild(el('div', 'footer', t('secure')));
         updateProgress();
       }
 
       (function () {
-        if (!TOKEN || !FNS) { fail('Ouvrez le lien exactement tel qu’il vous a été envoyé.'); return; }
+        var loadingEl = app.querySelector('.loading');
+        if (loadingEl) loadingEl.textContent = t('loading');
+        if (!TOKEN || !FNS) { fail(t('openAsSent')); return; }
         fetch(FNS + '/capture-manifest?t=' + encodeURIComponent(TOKEN))
           .then(function (r) {
-            if (!r.ok) throw new Error('Demandez un nouveau lien à la personne qui vous l’a envoyé.');
+            if (!r.ok) throw new Error(t('askNewLink'));
             return r.json();
           })
           .then(render)
-          .catch(function (e) { fail(e && e.message ? e.message : 'Réessayez dans un instant.'); });
+          .catch(function (e) { fail(e && e.message ? e.message : t('tryAgain')); });
       })();
     </script>
   </body>
