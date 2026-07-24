@@ -1,11 +1,19 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Session, User } from '@supabase/supabase-js';
+import * as Linking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 import { clearAppCache } from '@/lib/queryClient';
 import { supabase } from '@/lib/supabase';
 
+// Lets the OAuth browser tab hand control back to the app when it redirects (web).
+WebBrowser.maybeCompleteAuthSession();
+
 const LAST_USER_KEY = 'auth:last-user-id';
+
+/** Social sign-in providers we offer. Supabase names Microsoft "azure". */
+export type SocialProvider = 'google' | 'apple' | 'azure';
 
 type SignUpResult = { session: Session | null; needsConfirmation: boolean };
 
@@ -14,6 +22,9 @@ type AuthContextValue = {
   user: User | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithProvider: (provider: SocialProvider) => Promise<boolean>;
+  sendEmailCode: (email: string) => Promise<void>;
+  verifyEmailCode: (email: string, code: string) => Promise<void>;
   signUp: (email: string, password: string, displayName?: string) => Promise<SignUpResult>;
   resetPassword: (email: string) => Promise<void>;
   deleteAccount: () => Promise<void>;
@@ -72,6 +83,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       async signIn(email, password) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+      },
+      async signInWithProvider(provider) {
+        // OAuth without changing the client's global flow: open the provider in a
+        // browser tab, then read the session back from the redirect URL. Uses the
+        // implicit flow (tokens in the URL hash), so no PKCE/client changes.
+        const redirectTo = Linking.createURL('auth-callback');
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider,
+          options: { redirectTo, skipBrowserRedirect: true },
+        });
+        if (error) throw error;
+        if (!data?.url) throw new Error('OAuth: no authorization URL returned');
+        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+        if (result.type !== 'success' || !result.url) return false; // user dismissed the sheet
+        const returned = new URL(result.url);
+        const raw = (returned.hash || returned.search).replace(/^[#?]/, '');
+        const params = new URLSearchParams(raw);
+        const errorDescription = params.get('error_description');
+        if (errorDescription) throw new Error(errorDescription);
+        const access_token = params.get('access_token');
+        const refresh_token = params.get('refresh_token');
+        if (!access_token || !refresh_token) throw new Error('OAuth: no session returned');
+        const { error: sessionError } = await supabase.auth.setSession({ access_token, refresh_token });
+        if (sessionError) throw sessionError;
+        return true;
+      },
+      async sendEmailCode(email) {
+        // Passwordless: Supabase emails a login code (and/or magic link).
+        const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
+        if (error) throw error;
+      },
+      async verifyEmailCode(email, code) {
+        const { error } = await supabase.auth.verifyOtp({ email, token: code, type: 'email' });
         if (error) throw error;
       },
       async signUp(email, password, displayName) {

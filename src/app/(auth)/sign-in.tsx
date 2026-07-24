@@ -1,21 +1,22 @@
 import { Image } from 'expo-image';
-import { Link, useRouter } from 'expo-router';
+import { Link, useRouter, type Href } from 'expo-router';
 import { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { ConfigNotice } from '@/components/ConfigNotice';
+import { SocialButton } from '@/components/SocialButton';
 import { Text } from '@/components/Text';
 import { TextField } from '@/components/TextField';
 import { isSupabaseConfigured } from '@/lib/env';
 import { useT } from '@/lib/i18n';
 import { isValidEmail } from '@/lib/validation';
-import { useAuth } from '@/providers/AuthProvider';
+import { useAuth, type SocialProvider } from '@/providers/AuthProvider';
 import { colors, radius, spacing } from '@/theme';
 
 export default function SignIn() {
-  const { signIn } = useAuth();
+  const { signIn, signInWithProvider } = useAuth();
   const router = useRouter();
   const t = useT();
   const [email, setEmail] = useState('');
@@ -35,6 +36,18 @@ export default function SignIn() {
     try {
       await signIn(email.trim(), password);
       router.replace('/');
+    } catch (e) {
+      Alert.alert(t('auth.signInFailed'), e instanceof Error ? e.message : t('common.tryAgain'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onSocial = async (provider: SocialProvider) => {
+    setBusy(true);
+    try {
+      const ok = await signInWithProvider(provider);
+      if (ok) router.replace('/');
     } catch (e) {
       Alert.alert(t('auth.signInFailed'), e instanceof Error ? e.message : t('common.tryAgain'));
     } finally {
@@ -89,6 +102,43 @@ export default function SignIn() {
             <Button title={t('auth.signIn')} size="lg" onPress={onSubmit} loading={busy} disabled={!isSupabaseConfigured} />
           </View>
 
+          <View style={styles.divider}>
+            <View style={styles.line} />
+            <Text variant="caption" muted>
+              {t('auth.orContinueWith')}
+            </Text>
+            <View style={styles.line} />
+          </View>
+
+          <View style={styles.socials}>
+            <SocialButton
+              provider="google"
+              label={t('auth.continueGoogle')}
+              onPress={() => onSocial('google')}
+              disabled={!isSupabaseConfigured || busy}
+            />
+            <SocialButton
+              provider="apple"
+              label={t('auth.continueApple')}
+              onPress={() => onSocial('apple')}
+              disabled={!isSupabaseConfigured || busy}
+            />
+            <SocialButton
+              provider="azure"
+              label={t('auth.continueMicrosoft')}
+              onPress={() => onSocial('azure')}
+              disabled={!isSupabaseConfigured || busy}
+            />
+            <View style={styles.codeRow}>
+              {/* cast: typed-routes regenerate on the next `expo start`; the route file exists */}
+              <Link href={'/email-code' as Href}>
+                <Text variant="bodyStrong" color={colors.primary}>
+                  {t('auth.codeLink')}
+                </Text>
+              </Link>
+            </View>
+          </View>
+
           <View style={styles.row}>
             <Text variant="body" muted>
               {t('auth.noAccount')}{' '}
@@ -113,5 +163,9 @@ const styles = StyleSheet.create({
   logo: { width: 64, height: 64, borderRadius: radius.lg, marginBottom: spacing.sm },
   form: { gap: spacing.md },
   forgotRow: { alignItems: 'flex-end', marginTop: -spacing.xs },
+  divider: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  line: { flex: 1, height: 1, backgroundColor: colors.border },
+  socials: { gap: spacing.sm },
+  codeRow: { flexDirection: 'row', justifyContent: 'center', marginTop: spacing.xs },
   row: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
 });
