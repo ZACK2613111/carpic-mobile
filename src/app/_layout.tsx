@@ -10,6 +10,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ToastProvider } from '@/components/Toast';
 import { loadBrand } from '@/features/branding/brand';
 import { loadCapturePrefs } from '@/features/capture/capturePrefs';
+import { useIntro } from '@/features/onboarding/introStore';
 import { initUploads } from '@/features/uploads/uploads';
 import { fontAssets } from '@/lib/fonts';
 import { initI18n } from '@/lib/i18n';
@@ -23,6 +24,7 @@ export { ScreenErrorBoundary as ErrorBoundary } from '@/components/ScreenErrorBo
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts(fontAssets);
+  const introSeen = useIntro((s) => s.seen); // null until hydrated from storage
 
   // Skia's web build needs CanvasKit (WASM) loaded before any Skia surface,
   // matchFont() or <Canvas> renders. Native ships CanvasKit in the binary, so we
@@ -56,14 +58,16 @@ export default function RootLayout() {
   // Restore the persisted upload outbox and start draining (offline-first).
   useEffect(() => {
     void initI18n();
+    void useIntro.getState().hydrate();
     initUploads();
     void loadBrand();
     void loadCapturePrefs();
   }, []);
 
-  // Hold the first frame until the typeface is ready so text doesn't reflow
-  // from a system-font flash into Montserrat — and, on web, until CanvasKit loads.
-  if (!fontsLoaded || !skiaReady) return null;
+  // Hold the first frame until the typeface is ready so text doesn't reflow from a
+  // system-font flash into Montserrat, until CanvasKit loads on web, and until the
+  // first-run flag is known (so we don't flash sign-in before onboarding).
+  if (!fontsLoaded || !skiaReady || introSeen === null) return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -84,6 +88,7 @@ export default function RootLayout() {
               >
                 <Stack.Screen name="(tabs)" />
                 <Stack.Screen name="(auth)" />
+                <Stack.Screen name="onboarding" options={{ animation: 'fade' }} />
                 <Stack.Screen name="new" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
                 <Stack.Screen name="project/[id]" options={{ animation: 'slide_from_right' }} />
                 <Stack.Screen name="capture/[id]" options={{ animation: 'slide_from_bottom' }} />
