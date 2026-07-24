@@ -9,6 +9,8 @@ Built with **Expo SDK 57 + React Native + TypeScript**.
 
 > **New here? Start with the full step-by-step guide:** [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)
 > — from creating the Supabase account to running the app on your phone.
+> **Want the big picture?** See the [architecture overview](docs/ARCHITECTURE.md) — layers, data
+> flow, state, and how SOLID/KISS/YAGNI apply here.
 > **Planning to deploy?** See the [production & scaling roadmap](docs/ROADMAP.md).
 
 ---
