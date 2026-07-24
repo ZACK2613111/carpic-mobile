@@ -62,7 +62,7 @@ export default function RootLayout() {
   }, []);
 
   // Hold the first frame until the typeface is ready so text doesn't reflow
-  // from a system-font flash into Sora — and, on web, until CanvasKit is loaded.
+  // from a system-font flash into Montserrat — and, on web, until CanvasKit loads.
   if (!fontsLoaded || !skiaReady) return null;
 
   return (

@@ -18,12 +18,14 @@ type Props = TextProps & {
 export function Text({ variant = 'body', color, muted, faint, center, style, ...rest }: Props) {
   const locale = useLocale();
   const resolved = color ?? (faint ? colors.textFaint : muted ? colors.textMuted : colors.text);
-  // Latin text renders in Sora by naming the exact weight family (RN doesn't
-  // synthesise weights for custom fonts). Arabic falls back to the system face —
-  // Sora has no Arabic glyphs — and drops letter-spacing, which breaks Arabic joining.
+  // Both scripts render in a named weight family (RN doesn't synthesise weights
+  // for custom fonts): Montserrat for Latin, Tajawal for Arabic. Arabic drops
+  // letter-spacing, which breaks Arabic letter joining.
   const { fontWeight, letterSpacing, ...typo } = typography[variant] as TextStyle;
   const script =
-    locale === 'ar' ? { fontWeight } : { letterSpacing, fontFamily: fontFamilyForWeight(fontWeight) };
+    locale === 'ar'
+      ? { fontFamily: fontFamilyForWeight(fontWeight, true) }
+      : { letterSpacing, fontFamily: fontFamilyForWeight(fontWeight) };
   return (
     <RNText
       {...rest}
