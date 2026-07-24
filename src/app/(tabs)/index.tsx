@@ -255,7 +255,6 @@ const styles = StyleSheet.create({
   list: { padding: spacing.lg, gap: CARD_GAP, flexGrow: 1 },
   row: { gap: CARD_GAP },
   skeletonWrap: { flexDirection: 'row', flexWrap: 'wrap' },
-  skeletonThumb: { width: '100%', aspectRatio: 1 },
   card: { flex: 1, gap: spacing.xs, marginBottom: CARD_GAP, maxWidth: '48.5%' },
   thumb: {
     aspectRatio: 1,

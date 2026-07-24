@@ -4,6 +4,7 @@ import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
+import { parseOAuthRedirect } from '@/features/auth/oauth';
 import { clearAppCache } from '@/lib/queryClient';
 import { supabase } from '@/lib/supabase';
 
@@ -98,15 +99,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!data?.url) throw new Error('OAuth: no authorization URL returned');
         const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
         if (result.type !== 'success' || !result.url) return false; // user dismissed the sheet
-        const returned = new URL(result.url);
-        const raw = (returned.hash || returned.search).replace(/^[#?]/, '');
-        const params = new URLSearchParams(raw);
-        const errorDescription = params.get('error_description');
-        if (errorDescription) throw new Error(errorDescription);
-        const access_token = params.get('access_token');
-        const refresh_token = params.get('refresh_token');
-        if (!access_token || !refresh_token) throw new Error('OAuth: no session returned');
-        const { error: sessionError } = await supabase.auth.setSession({ access_token, refresh_token });
+        const parsed = parseOAuthRedirect(result.url);
+        if (!parsed.ok) throw new Error(parsed.error);
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: parsed.accessToken,
+          refresh_token: parsed.refreshToken,
+        });
         if (sessionError) throw sessionError;
         return true;
       },
