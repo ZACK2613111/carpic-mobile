@@ -1,4 +1,4 @@
-# 🚗 CarStudio
+# CarStudio
 
 A CarCutter-style **automotive photo studio** for mobile. Shoot or import a car photo →
 **remove the background on-device (offline, free)** → drop it on a **transparent cutout or a
@@ -7,9 +7,9 @@ branded studio background** → add **interactive marketing / inspection hotspot
 
 Built with **Expo SDK 57 + React Native + TypeScript**.
 
-> 📖 **New here? Start with the full step-by-step guide:** [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)
+> **New here? Start with the full step-by-step guide:** [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)
 > — from creating the Supabase account to running the app on your phone.
-> 🗺️ **Planning to deploy?** See the [production & scaling roadmap](docs/ROADMAP.md).
+> **Planning to deploy?** See the [production & scaling roadmap](docs/ROADMAP.md).
 
 ---
 
@@ -17,20 +17,20 @@ Built with **Expo SDK 57 + React Native + TypeScript**.
 
 A car = a **project** made of many guided shots + a 360° spin, published as a shareable link.
 
-- 🧭 **Guided multi-shot capture** — an in-app camera walks a dealership shot list with per-angle
+- **Guided multi-shot capture** — an in-app camera walks a dealership shot list with per-angle
   "stand here" overlays, progress, retake & auto-advance:
   - **Exterior** (8 walk-around angles) · **Wheels ×4** · **Interior** (dashboard, cluster,
-    boîte de vitesse, sièges, coffre, infotainment, odometer) · **Documents** (VIN, carte grise, keys)
-    · **Engine** (photo **+ engine-sound recording** 🔊)
-- 🔄 **360° spin** — capture ~24 frames, remove the background on all of them, drag to rotate,
+    gearbox, seats, trunk, infotainment, odometer) · **Documents** (VIN, registration, keys)
+    · **Engine** (photo **+ engine-sound recording**)
+- **360° spin** — capture ~24 frames, remove the background on all of them, drag to rotate,
   and pin **hotspots to specific angles**
-- ✂️ **On-device background removal** — offline, no per-image cost (iOS 17+ Vision · Android ML Kit)
-- 🎨 **Backgrounds** — transparent cutout, colors, gradients, procedural **studio/showroom** scenes
-- 📍 **Hotspots** — ✨ Marketing callouts + 🔧 Inspection points (with severity); pinch-zoom, drag, nudge
-- 🔗 **Shareable web link** — publish a project to an interactive page (360 + gallery + hotspots +
-  engine sound) that your client forwards to the buyer; opens in any browser
-- ⬆️ **Export** flattened per-shot images (share sheet / save to Photos)
-- ☁️ **Accounts + cloud sync** via Supabase (per-user, Row-Level-Security protected)
+- **On-device background removal** — offline, no per-image cost (iOS 17+ Vision · Android ML Kit)
+- **Backgrounds** — transparent cutout, colors, gradients, procedural **studio/showroom** scenes
+- **Hotspots** — marketing callouts + inspection points (with severity); pinch-zoom, drag, nudge
+- **Shareable web link** — publish a project to an interactive page (360 + gallery + hotspots +
+  engine sound) that your client forwards to the buyer; opens in any browser, localized EN/FR/AR
+- **Export** flattened per-shot images (share sheet / save to Photos)
+- **Accounts + cloud sync** via Supabase (per-user, Row-Level-Security protected)
 
 ---
 
@@ -45,17 +45,18 @@ A car = a **project** made of many guided shots + a 360° spin, published as a s
 | Backend | `@supabase/supabase-js` (auth, Postgres, Storage) |
 | Server state | `@tanstack/react-query` + `react-query-persist-client` (offline cache → instant loads) |
 | Editor state | `zustand` (with undo/redo history) |
+| Typography | `Montserrat` (Latin) + `Tajawal` (Arabic) via `@expo-google-fonts` |
 | UI / icons / feedback | `react-native-svg` (icons), `expo-linear-gradient`, `expo-haptics` |
-| Media | `expo-image`, `expo-image-picker`, `expo-image-manipulator`, `expo-file-system`, `expo-media-library`, `expo-sharing` |
+| Media | `expo-image`, `expo-image-picker`, `expo-image-manipulator`, `expo-file-system`, `expo-media-library`, `expo-audio`, `expo-sharing` |
 
 **Design & UX:** a small in-house design system (`src/theme.ts` + `src/components/*`) — typed `Text`,
 SVG `Icon` set, animated `Button`/`PressableScale`, `SegmentedControl`, `Skeleton` loaders, `Toast`,
-`BottomSheet`, haptic feedback, and reanimated transitions throughout.
+`BottomSheet`, haptic feedback, reanimated transitions, and full **EN / FR / AR (RTL)** localization.
 
 **Editor precision:** pinch-to-zoom + two-finger pan for precise placement, drag or nudge-arrow
 hotspots, alignment crosshair, undo/redo, first-run coach marks, and a live cut-out progress overlay.
 
-> ⚠️ **This app uses native modules, so it does not run in Expo Go.** You need a
+> **This app uses native modules, so it does not run in Expo Go.** You need a
 > **development build** (`expo-dev-client`). See *Running the app*.
 
 ---
@@ -71,17 +72,15 @@ Node ≥ 20.19.4 is required (Expo SDK 57).
 ## 2. Configure Supabase
 
 1. Create a free project at [supabase.com](https://supabase.com).
-2. Open the **SQL Editor** and run **all three** files in order:
-   - [`supabase/schema.sql`](supabase/schema.sql) — `profiles`, `projects`, `custom_backgrounds` +
-     the private `projects` Storage bucket, all with RLS.
-   - [`supabase/schema_v2.sql`](supabase/schema_v2.sql) — the `shots` table, the `projects` spin/
-     status/publish columns, and the **public `published` bucket** that backs shareable links.
-   - [`supabase/schema_v3.sql`](supabase/schema_v3.sql) — publish hardening: locks `published` down
-     to JSON manifests and adds the read-only public **`viewer` bucket**.
-     Then upload [`web/viewer.html`](web/viewer.html) to the **root of the `viewer` bucket**
-     (Dashboard → Storage → viewer → Upload) — publishing fails with a clear error until you do.
-3. In **Project Settings → API**, copy your **Project URL** and **publishable key**.
-4. Create your env file:
+2. Open the **SQL Editor** and run [`supabase/_setup_all.sql`](supabase/_setup_all.sql). It bundles
+   every migration (`schema.sql` → `schema_v6.sql`) in order and creates the tables, all
+   Row-Level-Security policies, and the `projects` / `published` / `viewer` Storage buckets.
+   *(You can instead run the individual `supabase/schema*.sql` files in order if you prefer.)*
+3. Upload [`web/viewer.html`](web/viewer.html) and [`web/capture.html`](web/capture.html) to the
+   **root of the `viewer` bucket** (Dashboard → Storage → viewer → Upload) — publishing and the
+   remote-capture link need them.
+4. In **Project Settings → API**, copy your **Project URL** and **publishable key**.
+5. Create your env file:
 
    ```bash
    cp .env.example .env
@@ -92,8 +91,10 @@ Node ≥ 20.19.4 is required (Expo SDK 57).
    EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxxxxxxx
    ```
 
-   > These `EXPO_PUBLIC_*` values are inlined into the app bundle. The publishable key is safe
-   > to ship — RLS is what protects your data. **Never put the service_role key in the app.**
+   > The variable name must be **`EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`** exactly — the app reads
+   > that name (`src/lib/env.ts`). These `EXPO_PUBLIC_*` values are inlined into the app bundle; the
+   > publishable key is safe to ship — RLS is what protects your data. **Never put the service_role
+   > key in the app.**
 
    *(Optional)* For testing without friction, disable "Confirm email" under
    **Authentication → Providers → Email**.
@@ -136,6 +137,16 @@ Install via the build's QR code, then `npx expo start --dev-client`.
 > If you have Android Studio / Xcode installed locally you can instead run
 > `npx expo run:android` / `npx expo run:ios` to build on your machine.
 
+### Browser (quick UI preview only)
+
+```bash
+npm run web
+```
+
+Boots the app in a browser for a fast look at the interface. The **camera, on-device background
+removal, and audio are native-only** and do not run on web (they are stubbed for the web build),
+so this is a UI/navigation preview — not a functional test. Requires the `.env` above to sign in.
+
 ---
 
 ## On-device background removal — important notes
@@ -161,17 +172,21 @@ src/
 │   ├── (auth)/                  # sign-in / sign-up (+ guard)
 │   ├── (tabs)/                  # Projects gallery + Settings (guarded)
 │   ├── new.tsx                  # pick/capture → create project → open editor
-│   └── editor/[id].tsx          # THE studio editor
+│   ├── capture/                 # guided multi-shot + 360° spin camera
+│   ├── editor/[id].tsx          # THE studio editor
+│   └── preview/[id].tsx         # in-app buyer preview (read-only)
 ├── features/
 │   ├── background-removal/      # swappable engine interface + engines + hook
 │   ├── editor/                  # StudioCanvas (Skia), backgrounds, export, hotspot sheet, store
-│   └── projects/               # Supabase CRUD + Storage + React Query hooks + types
+│   ├── spin/                    # 360° capture + viewer
+│   └── projects/                # Supabase CRUD + Storage + React Query hooks + types
 ├── providers/AuthProvider.tsx
-├── lib/                         # supabase client, query client, env
+├── lib/                         # supabase client, query client, env, i18n, fonts, upload queue
 ├── components/                  # Button, TextField, ScreenContainer, Checkerboard, ConfigNotice
 └── theme.ts                     # design tokens
 plugins/withMlKitSubjectSegmentation.js   # Android ML Kit install-time model download
-supabase/schema.sql                       # run this in the Supabase SQL editor
+supabase/_setup_all.sql                   # run this in the Supabase SQL editor (all migrations)
+web/viewer.html, web/capture.html         # buyer viewer + remote-capture pages (upload to viewer bucket)
 ```
 
 Data model: each **project** row stores its hotspots + layout in a `doc` JSONB column; the
@@ -202,9 +217,10 @@ interface later.
 
 ## Offline & sync
 
-Reads are cached by React Query and mutations retry on reconnect (the pragmatic offline story).
-Supabase has no built-in offline write sync; for a full local-first experience, **PowerSync**
-(paid) or **WatermelonDB** (free, DIY) can be layered on later — both need a dev build.
+Reads are cached by React Query and mutations retry on reconnect (the pragmatic offline story), with
+a persisted upload outbox for captured photos. Supabase has no built-in offline write sync; for a
+full local-first experience, **PowerSync** (paid) or **WatermelonDB** (free, DIY) can be layered on
+later — both need a dev build.
 
 ---
 
@@ -212,7 +228,7 @@ Supabase has no built-in offline write sync; for a full local-first experience, 
 
 | Symptom | Fix |
 |---|---|
-| "Supabase not configured" banner | Fill in `.env` and rebuild the dev client |
+| "Supabase not configured" banner | Fill in `.env` (exact var names) and restart Metro (`-c` to clear cache) |
 | Cut-out returns the original image | You're on an iOS simulator — use a real device |
 | `REQUIRES_API_FALLBACK` error | iOS device is < 17 — on-device cutout needs iOS 17+ |
 | Cut-out does nothing on a fresh Android phone offline | ML Kit model still downloading; connect once |
@@ -227,7 +243,9 @@ Supabase has no built-in offline write sync; for a full local-first experience, 
 npm start            # metro bundler (use --dev-client for the dev build)
 npm run android      # expo start --android
 npm run ios          # expo start --ios (Mac)
+npm run web          # expo start --web (UI preview only)
 npm run lint         # eslint
-npx tsc --noEmit     # typecheck
+npm run typecheck    # tsc --noEmit
+npm test             # jest
 npx expo-doctor      # validate config + deps
 ```
