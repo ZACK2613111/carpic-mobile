@@ -6,13 +6,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { EmptyState } from '@/components/EmptyState';
-import { Icon } from '@/components/Icon';
 import { IconButton } from '@/components/IconButton';
 import { NotFound } from '@/components/NotFound';
-import { PressableScale } from '@/components/PressableScale';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
+import { ToggleChip } from '@/components/ToggleChip';
 import { batchRemoveBackground, type BatchProgress } from '@/features/background-removal/batch';
 import { getBackground } from '@/features/editor/backgrounds';
 import { BackgroundStrip } from '@/features/editor/BackgroundStrip';
@@ -263,19 +262,15 @@ export default function SpinScreen() {
             <>
               {backgroundId !== 'transparent' ? (
                 <View style={styles.shadowRow}>
-                  <PressableScale
-                    style={[styles.shadowToggle, spinShadowOn ? styles.shadowToggleOn : null]}
+                  <ToggleChip
+                    icon="sparkles"
+                    label={`${t('editor.shadow')} ${spinShadowOn ? t('common.on') : t('common.off')}`}
+                    active={spinShadowOn}
                     onPress={() => {
                       haptics.selection();
                       setShadowState(!spinShadowOn);
                     }}
-                    haptic="selection"
-                  >
-                    <Icon name="sparkles" size={16} color={spinShadowOn ? colors.primary : colors.textMuted} />
-                    <Text variant="label" color={spinShadowOn ? colors.primary : colors.textMuted}>
-                      {`${t('editor.shadow')} ${spinShadowOn ? t('common.on') : t('common.off')}`}
-                    </Text>
-                  </PressableScale>
+                  />
                 </View>
               ) : null}
               <BackgroundStrip activeId={backgroundId} onSelect={setBackgroundId} />
@@ -351,19 +346,6 @@ const styles = StyleSheet.create({
   toolbar: { flexDirection: 'row', paddingHorizontal: spacing.lg, paddingTop: spacing.md },
   flex: { flex: 1 },
   shadowRow: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
-  shadowToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    alignSelf: 'flex-start',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  shadowToggleOn: { borderColor: colors.primary, backgroundColor: `${colors.primary}18` },
   progress: {
     position: 'absolute',
     top: 0,
