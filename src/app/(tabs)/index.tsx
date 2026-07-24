@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { Alert, FlatList, Platform, RefreshControl, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -58,6 +58,20 @@ export default function ProjectsScreen() {
       ]);
     },
     [del, t]
+  );
+
+  const openProject = useCallback(
+    (id: string) => router.push({ pathname: '/project/[id]', params: { id } }),
+    [router]
+  );
+
+  // Stable renderItem + props so a memoized ProjectCard doesn't re-render the
+  // whole grid on every search keystroke (matters on low-end Android).
+  const renderItem = useCallback(
+    ({ item }: { item: Project }) => (
+      <ProjectCard project={item} onPrefetch={prefetch} onOpen={openProject} onDelete={confirmDelete} />
+    ),
+    [prefetch, openProject, confirmDelete]
   );
 
   return (
@@ -140,14 +154,7 @@ export default function ProjectsScreen() {
               )}
             </View>
           }
-          renderItem={({ item }) => (
-            <ProjectCard
-              project={item}
-              onPressIn={() => prefetch(item.id)}
-              onPress={() => router.push({ pathname: '/project/[id]', params: { id: item.id } })}
-              onLongPress={() => confirmDelete(item)}
-            />
-          )}
+          renderItem={renderItem}
         />
       )}
 
@@ -164,16 +171,16 @@ export default function ProjectsScreen() {
   );
 }
 
-function ProjectCard({
+const ProjectCard = memo(function ProjectCard({
   project,
-  onPress,
-  onPressIn,
-  onLongPress,
+  onOpen,
+  onPrefetch,
+  onDelete,
 }: {
   project: Project;
-  onPress: () => void;
-  onPressIn: () => void;
-  onLongPress: () => void;
+  onOpen: (id: string) => void;
+  onPrefetch: (id: string) => void;
+  onDelete: (project: Project) => void;
 }) {
   const { data: thumbUrl } = useSignedUrl(project.thumb_path);
   const updated = relativeTime(project.updated_at);
@@ -182,9 +189,9 @@ function ProjectCard({
   return (
     <PressableScale
       style={styles.card}
-      onPress={onPress}
-      onPressIn={onPressIn}
-      onLongPress={onLongPress}
+      onPress={() => onOpen(project.id)}
+      onPressIn={() => onPrefetch(project.id)}
+      onLongPress={() => onDelete(project)}
       accessibilityRole="button"
       accessibilityLabel={isPublished(project) ? t('home.cardLabelPublished', { name: project.name }) : project.name}
       accessibilityHint={t('home.cardHint')}
@@ -230,7 +237,7 @@ function ProjectCard({
       ) : null}
     </PressableScale>
   );
-}
+});
 
 function SkeletonGrid() {
   return (
